@@ -1,0 +1,35 @@
+# 🔹 Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+db.sqlite3
+*.log
+*.db
+.DS_Store
+
+# 🔹 Virtual Environment
+.env
+.env.local
+
+# 🔹 Django Static & Media Files
+/static/
+media/
+
+# 🔹 IDE / Editor Files
+.vscode/
+.idea/
+*.iml
+
+# 🔹 React / Node.js
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.DS_Store
+
+# 🔹 Miscellaneous
+*.swp
+*.swo
+*.bak
