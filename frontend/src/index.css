@@ -5,4 +5,65 @@
   border: 1px solid #ccc;
   border-radius: 5px;
 }
-/* Rest of the styles... */
+.verify-email-form {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+.verify-email-form div {
+  margin-bottom: 15px;
+}
+.verify-email-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+.verify-email-form input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.verify-email-form button {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.verify-email-form button:hover {
+  background-color: #0056b3;
+}
+.login-form {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+.login-form div {
+  margin-bottom: 15px;
+}
+.login-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+.login-form input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.login-form button {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.login-form button:hover {
+  background-color: #0056b3;
+}

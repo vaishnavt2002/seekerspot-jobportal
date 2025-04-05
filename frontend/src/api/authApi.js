@@ -1,10 +1,17 @@
 import axiosInstance from "./axiosInstance"
 
-export const signup = async (userData)=>{
-    const response = await axiosInstance.post('/signup/',userData);
-    return response
+export const signup = async (userData) => {
+    return axiosInstance.post('/signup/', userData);
+};
 
-}
+export const sendVerificationOTP = async (email) => {
+    return axiosInstance.post('/send-verification-otp/', { email });
+};
+
+export const verifyOTP = async (verificationData) => {
+    return axiosInstance.post('/verify-otp/', verificationData);
+};
+
 export const login = async (credentials) => {
     const response = await axiosInstance.post('/login/', credentials);
     return response;

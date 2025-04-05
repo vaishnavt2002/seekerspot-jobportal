@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { signup } from '../api/authApi';
+import { login } from '../../api/authApi';
+import { useNavigate } from 'react-router-dom';
 
-const Signup = () => {
+const Login = () => {
     const [formData, setFormData] = useState({
         email: '',
-        username: '',
         password: '',
-        user_type: 'job_seeker',
-        phone_number: '',
     });
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,17 +20,19 @@ const Signup = () => {
         setError(null);
         setSuccess(null);
         try {
-            const response = await signup(formData);
-            setSuccess(response.message);
+            const response = await login(formData);
+            setSuccess('Login successful!');
             console.log('User data:', response.user);
+            // Redirect to a dashboard or home page later
+            navigate('/profile');  // Placeholder, adjust later
         } catch (err) {
-            setError(err.message || 'Signup failed');
+            setError(err.message || 'Login failed');
         }
     };
 
     return (
-        <div className="signup-form">
-            <h2>Sign Up</h2>
+        <div className="login-form">
+            <h2>Login</h2>
             {success && <p style={{ color: 'green' }}>{success}</p>}
             {error && <p style={{ color: 'red' }}>{error}</p>}
             <form onSubmit={handleSubmit}>
@@ -46,16 +47,6 @@ const Signup = () => {
                     />
                 </div>
                 <div>
-                    <label>Username</label>
-                    <input
-                        type="text"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div>
                     <label>Password</label>
                     <input
                         type="password"
@@ -65,26 +56,15 @@ const Signup = () => {
                         required
                     />
                 </div>
-                <div>
-                    <label>User Type</label>
-                    <select name="user_type" value={formData.user_type} onChange={handleChange}>
-                        <option value="job_seeker">Job Seeker</option>
-                        <option value="job_provider">Job Provider</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Phone Number</label>
-                    <input
-                        type="text"
-                        name="phone_number"
-                        value={formData.phone_number}
-                        onChange={handleChange}
-                    />
-                </div>
-                <button type="submit">Sign Up</button>
+                <button type="submit">Login</button>
             </form>
+            <p>
+                <button onClick={() => navigate('/signup')} style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}>
+                    Don’t have an account? Sign up
+                </button>
+            </p>
         </div>
     );
 };
 
-export default Signup;
+export default Login;

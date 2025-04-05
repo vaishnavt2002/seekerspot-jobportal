@@ -9,7 +9,7 @@ import random
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'user_type', 'profile_picture', 'phone_number', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'username', 'user_type', 'profile_picture', 'phone_number', 'is_verified', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -71,4 +71,36 @@ class ResetPasswordSerializer(serializers.Serializer):
         user.set_password(new_password)
         user.save()
         cache.delete(f"otp_{email}")
+        return user
+    
+class SendVerificationOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user with this email exists.")
+        if User.objects.get(email=value).is_verified:
+            raise serializers.ValidationError("Email is already verified.")
+        return value
+
+class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, data):
+        email = data.get('email')
+        otp = data.get('otp')
+        cache_key = f"verification_otp_{email}"
+        stored_otp = cache.get(cache_key)
+
+        if not stored_otp or stored_otp != otp:
+            raise serializers.ValidationError("Invalid or expired OTP.")
+        return data
+
+    def save(self):
+        email = self.validated_data['email']
+        user = User.objects.get(email=email)
+        user.is_verified = True
+        user.save()
+        cache.delete(f"verification_otp_{email}")  # Clear OTP
         return user

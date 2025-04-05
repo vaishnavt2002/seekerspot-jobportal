@@ -1,9 +1,8 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from auth_app import serializer
 from auth_app.models import JobProvider, JobSeeker, User
-from auth_app.serializer import ForgotPasswordSerializer, JobProviderProfileSerializer, JobSeekerProfileSerializer, ResetPasswordSerializer, SignupSerializer,UserSerializer
+from auth_app.serializer import *
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,10 +18,57 @@ class SignupView(APIView):
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            cache_key = f"verification_otp_{user.email}"
+            cache.set(cache_key, otp, timeout=300)
+
+            try:
+                send_mail(
+                    subject='Seekerspot Email Verification OTP',
+                    message=f'Your OTP to verify your email is: {otp}. It expires in 5 minutes.',
+                    from_email=None,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                return Response({'error': f'Failed to send OTP: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             return Response(
-                {'message': 'User Created Successfully', 'user': UserSerializer(user).data},
+                {'message': 'User created successfully. Please verify your email.', 'user': UserSerializer(user).data},
                 status=status.HTTP_201_CREATED
             )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SendVerificationOTPView(APIView):
+    def post(self, request):
+        serializer = SendVerificationOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email=email)
+            otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            cache_key = f"verification_otp_{email}"
+            cache.set(cache_key, otp, timeout=300) 
+
+            try:
+                send_mail(
+                    subject='Seekerspot Email Verification OTP',
+                    message=f'Your OTP to verify your email is: {otp}. It expires in 5 minutes.',
+                    from_email=None,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                return Response({'error': f'Failed to send OTP: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({'message': 'Verification OTP sent to your email.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyOTPView(APIView):
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({'message': 'Email verified successfully.', 'user': UserSerializer(user).data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class LoginView(APIView):
@@ -31,6 +77,8 @@ class LoginView(APIView):
         password = request.data.get('password')
         user = authenticate(request, email=email, password=password)
         if user:
+            if not user.is_verified:
+                return Response({'error': 'Please verify your email first.'}, status=status.HTTP_403_FORBIDDEN)
             refresh = RefreshToken.for_user(user)
             response = Response({
                 'refresh': str(refresh),
@@ -40,11 +88,10 @@ class LoginView(APIView):
                 key='access_token',
                 value=str(refresh.access_token),
                 httponly=True,
-                secure=False,  # True in production
+                secure=False,
                 samesite='Lax',
-                max_age=3600  # 1 hour
+                max_age=3600
             )
-            # Include CSRF token in response
             response.data['csrf_token'] = get_token(request)
             return response
         return Response({'errors': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
