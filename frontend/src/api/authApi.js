@@ -1,7 +1,9 @@
-import axiosInstance from "./axiosInstance"
+import axiosInstance from './axiosInstance';
 
 export const signup = async (userData) => {
-    return axiosInstance.post('/signup/', userData);
+    const config = { headers: { 'Content-Type': 'multipart/form-data' } };  // Ensure correct header
+    console.log('Request headers:', config.headers);  // Debug
+    return axiosInstance.post('/signup/', userData, config);
 };
 
 export const sendVerificationOTP = async (email) => {
@@ -13,31 +15,25 @@ export const verifyOTP = async (verificationData) => {
 };
 
 export const login = async (credentials) => {
-    const response = await axiosInstance.post('/login/', credentials);
-    return response;
+    return axiosInstance.post('/login/', credentials);
 };
 
 export const logout = async () => {
-    const response = await axiosInstance.post('/logout/');
-    return response;
+    return axiosInstance.post('/logout/');
 };
 
 export const getProfile = async () => {
-    const response = await axiosInstance.get('/profile/');
-    return response;
+    return axiosInstance.get('/profile/');
 };
 
 export const updateProfile = async (profileData) => {
-    const response = await axiosInstance.put('/profile/', profileData);
-    return response;
+    return axiosInstance.put('/profile/', profileData);
 };
 
 export const forgotPassword = async (email) => {
-    const response = await axiosInstance.post('/forgot-password/', { email });
-    return response;
+    return axiosInstance.post('/forgot-password/', { email });
 };
 
 export const resetPassword = async (resetData) => {
-    const response = await axiosInstance.post('/reset-password/', resetData);
-    return response;
+    return axiosInstance.post('/reset-password/', resetData);
 };

@@ -8,12 +8,7 @@ class User(AbstractUser):
         ('job_provider', 'Job Provider'),
         ('admin', 'Admin'),
     )
-    user_type = models.CharField(
-        max_length=20,
-        choices=USER_TYPE_CHOICES,
-        null=True,
-        blank=True
-    )
+    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, null=True, blank=True)
     email = models.EmailField(unique=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
@@ -22,10 +17,10 @@ class User(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = []  # Remove 'username' since it’ll be set to email
 
     def __str__(self):
-        return self.username
+        return self.email
     
 class JobSeeker(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='job_seeker_profile')

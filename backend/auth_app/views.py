@@ -11,10 +11,15 @@ from django.core.mail import send_mail
 from django.core.cache import cache
 import random
 from django.middleware.csrf import get_token
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # Create your views here.
 class SignupView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
     def post(self, request):
+        print("Request headers:", request.headers)  # Debug: See Content-Type
+        print("Request data:", request.data)
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -37,8 +42,8 @@ class SignupView(APIView):
                 {'message': 'User created successfully. Please verify your email.', 'user': UserSerializer(user).data},
                 status=status.HTTP_201_CREATED
             )
+        print("Serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class SendVerificationOTPView(APIView):
     def post(self, request):
         serializer = SendVerificationOTPSerializer(data=request.data)

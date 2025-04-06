@@ -8,9 +8,9 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.response.use(
-    (response) => response.data, 
+    (response) => response.data,
     (error) => {
-        const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'An error occurred';
         if (error.response?.status === 401) {
             console.error('Unauthorized, please log in.');
         } else if (error.response?.status === 500) {

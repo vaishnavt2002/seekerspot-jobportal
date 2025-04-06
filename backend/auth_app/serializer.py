@@ -9,30 +9,67 @@ import random
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'user_type', 'profile_picture', 'phone_number', 'is_verified', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'user_type', 'profile_picture', 'phone_number', 'is_verified', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
+# auth_app/serializers.py
 class SignupSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only = True)
+    password = serializers.CharField(write_only=True)
     user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES)
+    company_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    company_website = serializers.URLField(required=False, allow_blank=True, allow_null=True)  # Add allow_null=True
+    description = serializers.CharField(required=False, allow_blank=True)
+    company_logo = serializers.ImageField(required=False, allow_null=True)
+    industry = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    location = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
     class Meta:
         model = User
-        fields = ['email','username','password','user_type', 'phone_number']
+        fields = [
+            'email', 'password', 'user_type', 'phone_number',
+            'company_name', 'company_website', 'description', 'company_logo', 'industry', 'location'
+        ]
+
+    def validate(self, data):
+        user_type = data.get('user_type')
+        if user_type == 'job_provider':
+            if not data.get('company_name'):
+                raise serializers.ValidationError({"company_name": "This field is required for Job Providers."})
+            if not data.get('industry'):
+                raise serializers.ValidationError({"industry": "This field is required for Job Providers."})
+        return data
 
     def create(self, validated_data):
+        job_provider_data = {
+            'company_name': validated_data.pop('company_name', None),
+            'company_website': validated_data.pop('company_website', None),
+            'description': validated_data.pop('description', None),
+            'company_logo': validated_data.pop('company_logo', None),
+            'industry': validated_data.pop('industry', None),
+            'location': validated_data.pop('location', None),
+        }
+
         user = User.objects.create_user(
             email=validated_data['email'],
-            username=validated_data['username'],
+            username=validated_data['email'],
             password=validated_data['password'],
             user_type=validated_data['user_type'],
-            phone_number=validated_data['phone_number']
+            phone_number=validated_data.get('phone_number', None)
         )
+
         if user.user_type == 'job_seeker':
-            JobSeeker.objects.create(user=user, expected_salary = 0)
+            JobSeeker.objects.create(user=user, expected_salary=0)
         elif user.user_type == 'job_provider':
-            JobProvider.objects.create(user= user, company_name=validated_data['company_name'])
+            JobProvider.objects.create(
+                user=user,
+                company_name=job_provider_data['company_name'] or '',
+                company_website=job_provider_data['company_website'],
+                description=job_provider_data['description'],
+                company_logo=job_provider_data['company_logo'],
+                industry=job_provider_data['industry'] or '',
+                location=job_provider_data['location']
+            )
         return user
-    
 class JobSeekerProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only = True)
     class Meta:
