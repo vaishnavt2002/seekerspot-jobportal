@@ -27,8 +27,7 @@ const Login = () => {
             setSuccess('Login successful!');
             setLoading(false)
             console.log('User data:', response.user);
-            // Redirect to a dashboard or home page later
-            navigate('/profile');  // Placeholder, adjust later
+            navigate('/profile');
         } catch (err) {
             setLoading(false)
             setError(err.message || 'Login failed');

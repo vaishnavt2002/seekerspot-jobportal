@@ -18,8 +18,7 @@ class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        print("Request headers:", request.headers)  # Debug: See Content-Type
-        print("Request data:", request.data)
+
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
