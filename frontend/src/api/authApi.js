@@ -3,37 +3,37 @@ import axiosInstance from './axiosInstance';
 export const signup = async (userData) => {
     const config = { headers: { 'Content-Type': 'multipart/form-data' } };  // Ensure correct header
     console.log('Request headers:', config.headers);  // Debug
-    return axiosInstance.post('/signup/', userData, config);
+    return axiosInstance.post('/auth/signup/', userData, config);
 };
 
 export const sendVerificationOTP = async (email) => {
-    return axiosInstance.post('/send-verification-otp/', { email });
+    return axiosInstance.post('/auth/send-verification-otp/', { email });
 };
 
 export const verifyOTP = async (verificationData) => {
-    return axiosInstance.post('/verify-otp/', verificationData);
+    return axiosInstance.post('/auth/verify-otp/', verificationData);
 };
 
 export const login = async (credentials) => {
-    return axiosInstance.post('/login/', credentials);
+    return axiosInstance.post('/auth/login/', credentials);
 };
 
 export const logout = async () => {
-    return axiosInstance.post('/logout/');
+    return axiosInstance.post('/auth/logout/');
 };
 
 export const getProfile = async () => {
-    return axiosInstance.get('/profile/');
+    return axiosInstance.get('/auth/profile/');
 };
 
 export const updateProfile = async (profileData) => {
-    return axiosInstance.put('/profile/', profileData);
+    return axiosInstance.put('/auth/profile/', profileData);
 };
 
 export const forgotPassword = async (email) => {
-    return axiosInstance.post('/forgot-password/', { email });
+    return axiosInstance.post('/auth/forgot-password/', { email });
 };
 
 export const resetPassword = async (resetData) => {
-    return axiosInstance.post('/reset-password/', resetData);
+    return axiosInstance.post('/auth/reset-password/', resetData);
 };

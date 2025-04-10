@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
-    'auth_app'
+    'auth_app',
+    'profile_app',
 ]
 # Rest Framework settings
 REST_FRAMEWORK = {

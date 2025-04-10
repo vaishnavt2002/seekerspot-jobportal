@@ -37,7 +37,7 @@ export default function Navbar() {
         <Link to="/community" className="hover:text-blue-600">Community</Link>
         {isAuthenticated ?<div className="hover:text-blue-600" onClick={handleLogout}>Logout</div>:<><Link to="/login" className="hover:text-blue-600">Login</Link><Link to="/signup" className="hover:text-blue-600">Sign Up</Link></>}
         
-        {isAuthenticated&&<div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div>}
+        {isAuthenticated&&<Link to='/profile'><div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div></Link>}
         </div>
 
       <div className="md:hidden">
