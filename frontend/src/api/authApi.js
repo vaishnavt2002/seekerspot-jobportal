@@ -37,3 +37,7 @@ export const forgotPassword = async (email) => {
 export const resetPassword = async (resetData) => {
     return axiosInstance.post('/auth/reset-password/', resetData);
 };
+// Add this at the appropriate location in authApi.js
+export const refreshToken = async () => {
+    return axiosInstance.post('/auth/token/refresh/');
+};

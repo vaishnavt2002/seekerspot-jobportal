@@ -1,10 +1,16 @@
 import React, { useState } from "react";
 import { FaCog, FaBars } from "react-icons/fa";
 import SeekerSpot from "../SeekerSpot";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../../api/authApi";
+import {logoutAction} from '../../store/slices/authSlice';
 
 const Sidebar = () => {
   const [active, setActive] = useState("Dashboard");
   const [isOpen, setIsOpen] = useState(false); 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const menuItems = [
     "Dashboard",
@@ -13,6 +19,16 @@ const Sidebar = () => {
     "Shortlisted Applicants",
     "Interviews",
   ];
+   const handleLogout = async () => {
+      try {
+        await logout();
+        dispatch(logoutAction());
+        navigate('/');
+      } catch (err) {
+        console.error('Logout failed:', err);
+      }
+      setIsOpen(false);
+    };
 
   return (
     <>
@@ -55,8 +71,8 @@ const Sidebar = () => {
             <li
                 key='logout'
                 onClick={() => {
-                  setActive(item);
                   setIsOpen(false); 
+                  handleLogout();
                 }}
                 className={'cursor-pointer px-4 py-2 rounded-lg text-sm font-medium '}
               >

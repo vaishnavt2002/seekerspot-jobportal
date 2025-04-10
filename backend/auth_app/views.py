@@ -18,33 +18,39 @@ from rest_framework.exceptions import AuthenticationFailed
 class CookieTokenRefreshView(APIView):
     def post(self, request):
         refresh_token = request.COOKIES.get('refresh_token')
+        print(f"Refresh token from cookies: {refresh_token[:10]}... (truncated)")
 
         if refresh_token is None:
             return Response({'error': 'Refresh token not found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            refresh = RefreshToken(refresh_token)
-            access_token = str(refresh.access_token)
+            # Add debugging for token validation
+            try:
+                # This will verify the token signature and expiration
+                refresh = RefreshToken(refresh_token)
+                access_token = str(refresh.access_token)
+                
+                response = Response({
+                    'access': access_token,
+                    'message': 'Token refreshed successfully'
+                })
 
-            response = Response({
-                'access_token': access_token,
-                'refresh_token': str(refresh)  # Optional, but helps keep structure consistent
-            })
+                response.set_cookie(
+                    key='access_token',
+                    value=access_token,
+                    httponly=True,
+                    secure=False,
+                    samesite='Lax',
+                    max_age=3600
+                )
 
-            response.set_cookie(
-                key='access_token',
-                value=access_token,
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                max_age=3600
-            )
-
-            return response
+                return response
+            except Exception as token_error:
+                print(f"Token validation error details: {str(token_error)}")
+                raise TokenError(f"Token validation failed: {str(token_error)}")
 
         except TokenError as e:
-            return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
-
+            return Response({'error': f'Invalid refresh token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
 class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 

@@ -84,6 +84,13 @@ const Login = () => {
             >
               Don’t have an account? Sign up
             </button>
+            <button
+              className="text-blue-600 hover:underline w-full pt-2"
+              onClick={() => navigate('/')}
+              style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
+            >
+                Go home
+              </button>
           </p>
         </div>
       )}
