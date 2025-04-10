@@ -4,7 +4,7 @@ import SeekerSpot from "../SeekerSpot";
 
 const Sidebar = () => {
   const [active, setActive] = useState("Dashboard");
-  const [isOpen, setIsOpen] = useState(false); // for mobile menu toggle
+  const [isOpen, setIsOpen] = useState(false); 
 
   const menuItems = [
     "Dashboard",
@@ -16,7 +16,6 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Top Nav with Hamburger */}
       <div className="md:hidden flex justify-between items-center bg-white p-4 shadow-md">
         <SeekerSpot />
         <button
@@ -27,7 +26,6 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* Sidebar */}
       <div
         className={`bg-white shadow-lg p-6 h-screen w-64 flex-col justify-between fixed z-50 top-0 left-0 transform transition-transform duration-300 ease-in-out 
         ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:relative md:flex`}
@@ -43,7 +41,7 @@ const Sidebar = () => {
                 key={item}
                 onClick={() => {
                   setActive(item);
-                  setIsOpen(false); // close on mobile
+                  setIsOpen(false); 
                 }}
                 className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-medium ${
                   active === item
@@ -54,6 +52,16 @@ const Sidebar = () => {
                 {item}
               </li>
             ))}
+            <li
+                key='logout'
+                onClick={() => {
+                  setActive(item);
+                  setIsOpen(false); 
+                }}
+                className={'cursor-pointer px-4 py-2 rounded-lg text-sm font-medium '}
+              >
+                Logout
+              </li>
           </ul>
         </div>
 
@@ -73,7 +81,6 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Background Overlay when sidebar open on small screens */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 z-40 md:hidden"

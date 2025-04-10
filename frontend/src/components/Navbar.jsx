@@ -1,12 +1,29 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import seekerSpotLogo from '../assets/SeekerSpot.svg';
 import SeekersSpotLogo from './SeekerSpot';
 import userIcon from '../assets/user_3917688.png';
-
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../api/authApi";
+import {logoutAction} from '../store/slices/authSlice';
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      dispatch(logoutAction());
+      navigate('/');
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+    setIsOpen(false);
+  };
+
 
   return (
     <nav className="bg-white shadow-sm px-20 py-3 flex items-center justify-between">
@@ -18,8 +35,10 @@ export default function Navbar() {
         <Link to="/find-jobs" className="hover:text-blue-600">Find Jobs</Link>
         <Link to="/my-jobs" className="hover:text-blue-600">My Jobs</Link>
         <Link to="/community" className="hover:text-blue-600">Community</Link>
-        <Link to="/logout" className="hover:text-blue-600">Logout</Link>
-        <div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div></div>
+        {isAuthenticated ?<div className="hover:text-blue-600" onClick={handleLogout}>Logout</div>:<><Link to="/login" className="hover:text-blue-600">Login</Link><Link to="/signup" className="hover:text-blue-600">Sign Up</Link></>}
+        
+        {isAuthenticated&&<div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div>}
+        </div>
 
       <div className="md:hidden">
         <button onClick={() => setIsOpen(!isOpen)}>
@@ -33,8 +52,9 @@ export default function Navbar() {
             <Link to="/find-jobs" className="hover:text-blue-600" onClick={() => setIsOpen(false)}>Find Jobs</Link>
             <Link to="/my-jobs" className="hover:text-blue-600" onClick={() => setIsOpen(false)}>My Jobs</Link>
             <Link to="/community" className="hover:text-blue-600" onClick={() => setIsOpen(false)}>Community</Link>
-            <Link to="/logout" className="hover:text-blue-600" onClick={() => setIsOpen(false)}>Logout</Link>
-            <div className="text-xl mt-2"><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div>
+            {isAuthenticated ?<div className="hover:text-blue-600" onClick={handleLogout}>Logout</div>:<><Link to="/login" className="hover:text-blue-600">Login</Link><Link to="/signup" className="hover:text-blue-600">Sign Up</Link></>}
+        
+        {isAuthenticated&&<div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div>}
           </div>
         </div>
       )}

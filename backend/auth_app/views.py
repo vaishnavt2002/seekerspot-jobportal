@@ -5,20 +5,52 @@ from auth_app.models import JobProvider, JobSeeker, User
 from auth_app.serializer import *
 from rest_framework import status
 from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
 from django.core.cache import cache
 import random
 from django.middleware.csrf import get_token
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import AuthenticationFailed
 
 # Create your views here.
+class CookieTokenRefreshView(APIView):
+    def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token')
+
+        if refresh_token is None:
+            return Response({'error': 'Refresh token not found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+
+            response = Response({
+                'access_token': access_token,
+                'refresh_token': str(refresh)  # Optional, but helps keep structure consistent
+            })
+
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=3600
+            )
+
+            return response
+
+        except TokenError as e:
+            return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+
 class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-
+        print("Request headers:", request.headers)  # Debug: See Content-Type
+        print("Request data:", request.data)
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -94,7 +126,15 @@ class LoginView(APIView):
                 httponly=True,
                 secure=False,
                 samesite='Lax',
-                max_age=3600
+                max_age=10000
+            )
+            response.set_cookie(
+                key='refresh_token',
+                value=str(refresh),
+                httponly=True,
+                samesite='Lax',
+                secure=False,
+                max_age=7 * 24 * 60 * 60  # 7 days
             )
             response.data['csrf_token'] = get_token(request)
             return response
@@ -166,6 +206,19 @@ class ResetPasswordView(APIView):
     
 class LogoutView(APIView):
     def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token')
+
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist() 
+            except TokenError:
+                pass 
+
         response = Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+
         response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+
+
         return response
