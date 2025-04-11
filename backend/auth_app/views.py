@@ -1,3 +1,4 @@
+from traceback import print_tb
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -15,11 +16,15 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import AuthenticationFailed
 
 # Create your views here.
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_exempt, name='dispatch')
 class CookieTokenRefreshView(APIView):
     def post(self, request):
+        print("All cookies:", request.COOKIES)
         refresh_token = request.COOKIES.get('refresh_token')
-        print(f"Refresh token from cookies: {refresh_token[:10]}... (truncated)")
-
+        print('refresh token',refresh_token)
         if refresh_token is None:
             return Response({'error': 'Refresh token not found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
 
