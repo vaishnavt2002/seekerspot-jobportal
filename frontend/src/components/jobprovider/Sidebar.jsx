@@ -2,38 +2,39 @@ import React, { useState } from "react";
 import { FaCog, FaBars } from "react-icons/fa";
 import SeekerSpot from "../SeekerSpot";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import { logout } from "../../api/authApi";
-import {logoutAction} from '../../store/slices/authSlice';
+import { logoutAction } from "../../store/slices/authSlice";
 
 const Sidebar = () => {
-  const [active, setActive] = useState("Dashboard");
-  const [isOpen, setIsOpen] = useState(false); 
+  const [isOpen, setIsOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const menuItems = [
-    "Dashboard",
-    "Job Posts",
-    "Applicants",
-    "Shortlisted Applicants",
-    "Interviews",
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Job Posts", path: "/job-posts" },
+    { name: "Applicants", path: "/applicants" },
+    { name: "Shortlisted Applicants", path: "/shortlisted" },
+    { name: "Interviews", path: "/interviews" },
   ];
-   const handleLogout = async () => {
-      try {
-        await logout();
-        dispatch(logoutAction());
-        navigate('/');
-      } catch (err) {
-        console.error('Logout failed:', err);
-      }
-      setIsOpen(false);
-    };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      dispatch(logoutAction());
+      navigate("/");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+    setIsOpen(false);
+  };
 
   return (
     <>
+      {/* Mobile Top Bar */}
       <div className="md:hidden flex justify-between items-center bg-white p-4 shadow-md">
-        <SeekerSpot />
+        
         <button
           className="text-gray-600 text-xl"
           onClick={() => setIsOpen(!isOpen)}
@@ -42,6 +43,7 @@ const Sidebar = () => {
         </button>
       </div>
 
+      {/* Sidebar */}
       <div
         className={`bg-white shadow-lg p-6 h-screen w-64 flex-col justify-between fixed z-50 top-0 left-0 transform transition-transform duration-300 ease-in-out 
         ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:relative md:flex`}
@@ -52,51 +54,53 @@ const Sidebar = () => {
           </div>
 
           <ul className="space-y-4 mt-4">
-            {menuItems.map((item) => (
-              <li
-                key={item}
-                onClick={() => {
-                  setActive(item);
-                  setIsOpen(false); 
-                }}
-                className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-medium ${
-                  active === item
-                    ? "bg-blue-500 text-white"
-                    : "text-gray-700 hover:bg-blue-100"
-                }`}
-              >
-                {item}
+            {menuItems.map(({ name, path }) => (
+              <li key={name} onClick={() => setIsOpen(false)}>
+                <NavLink
+                  to={path}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg text-sm font-medium ${
+                      isActive
+                        ? "bg-blue-500 text-white"
+                        : "text-gray-700 hover:bg-blue-100"
+                    }`
+                  }
+                >
+                  {name}
+                </NavLink>
               </li>
             ))}
-            <li
-                key='logout'
-                onClick={() => {
-                  setIsOpen(false); 
-                  handleLogout();
-                }}
-                className={'cursor-pointer px-4 py-2 rounded-lg text-sm font-medium '}
+
+            {/* Logout */}
+            <li>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-100"
               >
                 Logout
-              </li>
+              </button>
+            </li>
           </ul>
         </div>
 
-        <div
-          onClick={() => {
-            setActive("Company Profile");
-            setIsOpen(false); // close on mobile
-          }}
-          className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium mt-6 ${
-            active === "Company Profile"
-              ? "bg-blue-500 text-white"
-              : "text-gray-600 hover:bg-blue-100"
-          }`}
+        {/* Company Profile */}
+        <NavLink
+          to="/jobprovider/profile"
+          onClick={() => setIsOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium mt-6 ${
+              isActive
+                ? "bg-blue-500 text-white"
+                : "text-gray-600 hover:bg-blue-100"
+            }`
+          }
         >
           <FaCog />
           Company Profile
-        </div>
+        </NavLink>
       </div>
 
+      {/* Overlay for mobile */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 z-40 md:hidden"
