@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'auth_app',
     'profile_app',
+    'jobpost_app',
 ]
 # Rest Framework settings
 REST_FRAMEWORK = {
