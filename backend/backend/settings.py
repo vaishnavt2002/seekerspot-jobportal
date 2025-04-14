@@ -53,17 +53,15 @@ INSTALLED_APPS = [
 # Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'auth_app.authentication.CustomJWTAuthentication', 
+        'auth_app.authentication.CookieJWTAuthentication',
     ],
 }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_BLACKLIST_ENABLED": True, 
+    "ROTATE_REFRESH_TOKENS": False,  # No rotation
+    "BLACKLIST_AFTER_ROTATION": False,  # No blacklisting
 }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

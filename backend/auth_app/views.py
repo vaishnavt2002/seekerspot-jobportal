@@ -14,46 +14,76 @@ import random
 from django.middleware.csrf import get_token
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import AuthenticationFailed
+import logging
 
-# Create your views here.
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
+logger = logging.getLogger(__name__)
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        logger.debug(f"Login attempt: {email}")
+        user = authenticate(request, email=email, password=password)
+        if user:
+            if not user.is_verified:
+                logger.debug("User not verified")
+                return Response({'error': 'Please verify your email.'}, status=status.HTTP_403_FORBIDDEN)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            logger.debug(f"Tokens: access={access_token}, refresh={refresh_token}")
+            # Clear logout flag
+            cache_key = f"logout_{user.id}"
+            cache.delete(cache_key)
+            logger.debug(f"Cleared logout flag for user {user.email}")
+            response = Response({
+                'access': access_token,
+                'refresh': refresh_token,
+                'user': UserSerializer(user).data
+            })
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=5 * 60
+            )
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=24 * 60 * 60
+            )
+            return response
+        logger.debug("Invalid credentials")
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 class CookieTokenRefreshView(APIView):
     def post(self, request):
-        print("All cookies:", request.COOKIES)
+        logger.debug(f"Cookies: {request.COOKIES}")
         refresh_token = request.COOKIES.get('refresh_token')
-        print('refresh token',refresh_token)
-        if refresh_token is None:
-            return Response({'error': 'Refresh token not found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
-
+        if not refresh_token:
+            logger.debug("No refresh token")
+            return Response({'error': 'Refresh token missing'}, status=status.HTTP_401_UNAUTHORIZED)
         try:
-            # Add debugging for token validation
-            try:
-                # This will verify the token signature and expiration
-                refresh = RefreshToken(refresh_token)
-                access_token = str(refresh.access_token)
-                
-                response = Response({
-                    'access': access_token,
-                    'message': 'Token refreshed successfully'
-                })
-
-                response.set_cookie(
-                    key='access_token',
-                    value=access_token,
-                    httponly=True,
-                    secure=False,
-                    samesite='Lax',
-                    max_age=3600
-                )
-
-                return response
-            except Exception as token_error:
-                print(f"Token validation error details: {str(token_error)}")
-                raise TokenError(f"Token validation failed: {str(token_error)}")
-
-        except TokenError as e:
+            refresh = RefreshToken(refresh_token)
+            refresh.verify()
+            access_token = str(refresh.access_token)
+            logger.debug(f"New access token: {access_token}")
+            response = Response({'access': access_token})
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=5 * 60
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Refresh error: {str(e)}")
             return Response({'error': f'Invalid refresh token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
 class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -116,38 +146,7 @@ class VerifyOTPView(APIView):
             return Response({'message': 'Email verified successfully.', 'user': UserSerializer(user).data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class LoginView(APIView):
-    def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
-        user = authenticate(request, email=email, password=password)
-        if user:
-            if not user.is_verified:
-                return Response({'error': 'Please verify your email first.'}, status=status.HTTP_403_FORBIDDEN)
-            refresh = RefreshToken.for_user(user)
-            response = Response({
-                'refresh': str(refresh),
-                'user': UserSerializer(user).data
-            })
-            response.set_cookie(
-                key='access_token',
-                value=str(refresh.access_token),
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                max_age=10000
-            )
-            response.set_cookie(
-                key='refresh_token',
-                value=str(refresh),
-                httponly=True,
-                samesite='Lax',
-                secure=False,
-                max_age=7 * 24 * 60 * 60  # 7 days
-            )
-            response.data['csrf_token'] = get_token(request)
-            return response
-        return Response({'errors': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
 class ProfileView(APIView):
     permission_classes= [IsAuthenticated]
 
@@ -213,21 +212,20 @@ class ResetPasswordView(APIView):
 
 
     
+
+
 class LogoutView(APIView):
     def post(self, request):
+        user = request.user if request.user.is_authenticated else None
         refresh_token = request.COOKIES.get('refresh_token')
 
-        if refresh_token:
-            try:
-                token = RefreshToken(refresh_token)
-                token.blacklist() 
-            except TokenError:
-                pass 
+        if user and refresh_token:
+            # Mark user as logged out in cache (expires with refresh token)
+            cache_key = f"logout_{user.id}"
+            cache.set(cache_key, True, timeout=24 * 60 * 60)  # Matches refresh_token lifetime
+            logger.debug(f"User {user.email} marked as logged out")
 
         response = Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
-
         response.delete_cookie('access_token')
         response.delete_cookie('refresh_token')
-
-
         return response

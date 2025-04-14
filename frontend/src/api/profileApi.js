@@ -38,7 +38,6 @@ const profileApi = {
     }
   },
 
-  //education methods
   getEducations: async () => {
     try {
       const response = await axiosInstance.get('/profile/educations/');
