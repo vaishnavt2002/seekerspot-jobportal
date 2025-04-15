@@ -2,7 +2,8 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    path('', JobPostView.as_view(), name='job-post-list-create'),
-    path('<int:pk>/', JobPostDetailView.as_view(), name='job-post-detail'),
+    path('job-posts/', JobPostView.as_view(), name='job-post-list-create'),
+    path('job-posts/<int:pk>/', JobPostDetailView.as_view(), name='job-post-detail'),
+    path('public/job-posts/', PublicJobPostListView.as_view(), name='public-job-post-list'),
 ]
 

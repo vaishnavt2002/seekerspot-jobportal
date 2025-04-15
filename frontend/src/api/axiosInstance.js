@@ -63,21 +63,23 @@ axiosInstance.interceptors.response.use(
             }
         }
         
-        const errorMessage = error.response?.data?.message || 
-                           error.response?.data?.error || 
-                           error.message || 
-                           'An error occurred';
+        let errorMessage = 'An error occurred';
+        let fieldErrors = {};
         
-        if (error.response?.status === 401) {
-            console.error('Unauthorized, please log in.');
-        } else if (error.response?.status === 500) {
-            console.error('Server error, please try again later.');
+        const data = error.response?.data;
+        if (typeof data === 'object' && data !== null) {
+            fieldErrors = data;
+            const nonFieldError = data?.non_field_errors?.[0];
+            const emailError = data?.email?.[0];
+            errorMessage = nonFieldError || emailError || error.message || errorMessage;
         }
         
         return Promise.reject({ 
             message: errorMessage, 
-            status: error.response?.status 
+            status: error.response?.status,
+            fieldErrors
         });
+        
     }
 );
 

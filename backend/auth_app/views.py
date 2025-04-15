@@ -27,12 +27,11 @@ class LoginView(APIView):
         if user:
             if not user.is_verified:
                 logger.debug("User not verified")
-                return Response({'error': 'Please verify your email.'}, status=status.HTTP_403_FORBIDDEN)
+                return Response({'error': 'Verification failed. Sign up again'}, status=status.HTTP_403_FORBIDDEN)
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
             logger.debug(f"Tokens: access={access_token}, refresh={refresh_token}")
-            # Clear logout flag
             cache_key = f"logout_{user.id}"
             cache.delete(cache_key)
             logger.debug(f"Cleared logout flag for user {user.email}")
@@ -89,8 +88,16 @@ class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        
-        serializer = SignupSerializer(data=request.data)
+        email = request.data.get('email')
+        try:
+            existing_user = User.objects.get(email=email)
+            if existing_user.is_verified:
+                return Response({'error': 'User with this email already exists and is verified.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                serializer = SignupSerializer(existing_user, data=request.data, partial=True)
+        except User.DoesNotExist:
+            serializer = SignupSerializer(data=request.data)
+
         if serializer.is_valid():
             user = serializer.save()
             otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -109,11 +116,13 @@ class SignupView(APIView):
                 return Response({'error': f'Failed to send OTP: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             return Response(
-                {'message': 'User created successfully. Please verify your email.', 'user': UserSerializer(user).data},
+                {'message': 'User created/updated successfully. Please verify your email.', 'user': UserSerializer(user).data},
                 status=status.HTTP_201_CREATED
             )
+
         print("Serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class SendVerificationOTPView(APIView):
     def post(self, request):
         serializer = SendVerificationOTPSerializer(data=request.data)

@@ -32,7 +32,8 @@ const Login = () => {
       else if (userType === 'admin') navigate('/admin/dashboard');
       else navigate('/');
     } catch (err) {
-      dispatch(loginFailure(err.message || 'Login failed'));
+      console.log(err)
+      dispatch(loginFailure(err?.fieldErrors?.error || 'Login failed'));
     }
   };
 

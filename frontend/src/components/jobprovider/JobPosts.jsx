@@ -649,7 +649,7 @@ const JobPosts = () => {
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
-                  onClick={() => setEditModalOpen(false)}
+                  onClick={() => {setEditModalOpen(false); resetForm();}}
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100"
                 >
                   Cancel

@@ -1,9 +1,10 @@
 import React from 'react'
+import FindJobs from '../../components/jobprovider/FindJobs'
 
 const FindJobsPage = () => {
   return (
     <>
-    <FindJobsPage/>
+    <FindJobs/>
     </>
   )
 }

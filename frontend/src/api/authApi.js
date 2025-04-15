@@ -1,8 +1,7 @@
 import axiosInstance from './axiosInstance';
 
 export const signup = async (userData) => {
-    const config = { headers: { 'Content-Type': 'multipart/form-data' } };  // Ensure correct header
-    console.log('Request headers:', config.headers);  // Debug
+    const config = { headers: { 'Content-Type': 'multipart/form-data' } };
     return axiosInstance.post('/auth/signup/', userData, config);
 };
 

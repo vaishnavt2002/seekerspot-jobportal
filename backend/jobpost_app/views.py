@@ -1,14 +1,16 @@
-from ast import Delete, Mult
-from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from auth_app import serializer
 from profile_app.permissions import IsJobProvier
 from .models import JobPost
-from .serializer import JobPostSerializer
+from .serializer import JobPostSerializer, PublicJobPostSerializer
+from rest_framework import status
+from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
+from django.utils import timezone
+
 
 # Create your views here.
 class JobPostView(APIView):
@@ -59,3 +61,45 @@ class JobPostDetailView(APIView):
         job_post.delete()
         return Response({"message": "Job post marked as deleted."}, status=status.HTTP_200_OK)
 
+
+class PublicJobPostPagination(PageNumberPagination):
+    page_size = 12
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+class PublicJobPostListView(APIView):
+    pagination_class = PublicJobPostPagination
+
+    def get(self, request):
+        search = request.query_params.get("search", "")
+        location = request.query_params.get("location", "")
+        job_type = request.query_params.get("job_type", "")
+        employment_type = request.query_params.get("employment_type", "")
+        domain = request.query_params.get("domain", "")
+
+        jobs = JobPost.objects.filter(
+            status="PUBLISHED",
+            is_deleted=False,
+            application_deadline__gte=timezone.now(),
+        )
+
+        if search:
+            jobs = jobs.filter(
+                Q(title__icontains=search)
+                | Q(description__icontains=search)
+                | Q(job_provider__company_name__icontains=search)
+            )
+        if location:
+            jobs = jobs.filter(location__icontains=location)
+        if job_type:
+            jobs = jobs.filter(job_type=job_type)
+        if employment_type:
+            jobs = jobs.filter(employment_type=employment_type)
+        if domain:
+            jobs = jobs.filter(domain=domain)
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(jobs.order_by("-created_at"), request)
+
+        serializer = PublicJobPostSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)

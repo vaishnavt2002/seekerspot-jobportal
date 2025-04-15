@@ -39,7 +39,42 @@ class JobPostSerializer(serializers.ModelSerializer):
         if responsibilities is not None:
             instance.responsibilities = '\n'.join(responsibilities)
         return super().update(instance, validated_data)
-    
 
+class PublicJobPostSerializer(serializers.ModelSerializer):
+    job_provider = serializers.SerializerMethodField()
+    requirements_display = serializers.SerializerMethodField()
+    responsibilities_display = serializers.SerializerMethodField()
 
+    class Meta:
+        model = JobPost
+        fields = [
+            "id",
+            "title",
+            "description",
+            "requirements_display",
+            "responsibilities_display",
+            "location",
+            "job_type",
+            "employment_type",
+            "domain",
+            "experience_level",
+            "min_salary",
+            "max_salary",
+            "application_deadline",
+            "status",
+            "created_at",
+            "job_provider",
+        ]
+
+    def get_job_provider(self, obj):
+        return {
+            "company_name": obj.job_provider.company_name,
+            "company_logo": obj.job_provider.company_logo.url if obj.job_provider.company_logo else None,
+        }
+
+    def get_requirements_display(self, obj):
+        return obj.requirements.split("\n") if obj.requirements else []
+
+    def get_responsibilities_display(self, obj):
+        return obj.responsibilities.split("\n") if obj.responsibilities else []
     
