@@ -51,6 +51,13 @@ const VerifyEmail = ({ email, onVerified }) => {
                 <button  className='w-full bg-blue-500 text-white rounded-md py-2 px-4 hover:bg-blue-700 transition delay-150 duration-300 ease-in-out hover:-translate-y-1' type="submit">Verify</button>
             </form>
             <button className="text-blue-600 hover:underline w-full pt-2" onClick={handleResend} >Resend OTP</button>
+            <button
+              className="text-blue-600 hover:underline w-full pt-2"
+              onClick={() => navigate('/')}
+              style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
+            >
+                Go home
+              </button>
         </div>
         
     );

@@ -51,7 +51,6 @@ const Signup = () => {
             setFormData({ ...formData, [name]: value });
         }
         
-        // Clear field-specific error when user starts typing again
         if (errors[name]) {
             setErrors({
                 ...errors,
@@ -59,7 +58,6 @@ const Signup = () => {
             });
         }
 
-        // Clear general error when user changes email (handles duplicate email error)
         if (name === 'email' && error) {
             setError(null);
         }
@@ -68,34 +66,27 @@ const Signup = () => {
     const validateForm = () => {
         const newErrors = {};
         
-        // Check required fields
         if (!formData.email) newErrors.email = 'Email is required';
         if (!formData.password) newErrors.password = 'Password is required';
         if (!formData.user_type) newErrors.user_type = 'User type is required';
         if (!formData.phone_number) newErrors.phone_number = 'Phone number is required';
         
-        // Validate email format
         if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = 'Please enter a valid email address';
         }
         
-        // Validate password
         if (formData.password) {
             if (!passwordChecks.length || !passwordChecks.uppercase || 
                 !passwordChecks.lowercase || !passwordChecks.number) {
                 newErrors.password = 'Password does not meet requirements';
             }
         }
-        
-        // Validate phone number
-        if (formData.phone_number) {
-            // Must be 10 digits and start with a digit between 4-9
+                if (formData.phone_number) {
             if (!/^[4-9]\d{9}$/.test(formData.phone_number)) {
                 newErrors.phone_number = 'Phone number must be 10 digits and start with a digit between 4-9';
             }
         }
         
-        // Check job provider specific fields
         if (formData.user_type === 'job_provider') {
             if (!formData.company_name) {
                 newErrors.company_name = 'Company name is required';
@@ -110,7 +101,6 @@ const Signup = () => {
             if (!formData.company_website) {
                 newErrors.company_website = 'Company website is required';
             } else {
-                // Basic URL validation
                 try {
                     new URL(formData.company_website);
                 } catch (e) {
@@ -162,7 +152,6 @@ const Signup = () => {
         } catch (err) {
             setLoading(false);
 
-            // Handle specific error cases
             if (err.status === 400) {
                 setError(err.fieldErrors.error)
             } else {
@@ -361,6 +350,13 @@ const Signup = () => {
                     >
                         Already have an account? Login
                     </button>
+                    <button
+              className="text-blue-600 hover:underline w-full pt-2"
+              onClick={() => navigate('/')}
+              style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
+            >
+                Go home
+              </button>
                 </div>
             </div>
             ) : (
