@@ -87,6 +87,13 @@ const Login = () => {
             </button>
             <button
               className="text-blue-600 hover:underline w-full pt-2"
+              onClick={() => navigate('/reset-password')}
+              style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
+            >
+              Forgot password?
+            </button>
+            <button
+              className="text-blue-600 hover:underline w-full pt-2"
               onClick={() => navigate('/')}
               style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
             >

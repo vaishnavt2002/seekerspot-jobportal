@@ -6,6 +6,7 @@ const Education = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentEducation, setCurrentEducation] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
   const [formData, setFormData] = useState({
     institution: '',
     degree: '',
@@ -16,6 +17,7 @@ const Education = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Fetch educations on mount
   useEffect(() => {
@@ -43,10 +45,42 @@ const Education = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear validation error when user types
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.institution || formData.institution.length < 3) {
+      errors.institution = 'Institution must be at least 3 characters';
+    }
+    
+    if (!formData.degree || formData.degree.length < 2) {
+      errors.degree = 'Degree must be at least 2 characters';
+    }
+    
+    if (formData.start_date && formData.end_date && new Date(formData.start_date) > new Date(formData.end_date)) {
+      errors.end_date = 'End date must be after start date';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleAddEducation = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
     try {
       await profileApi.createEducation(formData);
@@ -68,6 +102,11 @@ const Education = () => {
 
   const handleEditEducation = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
     try {
       await profileApi.updateEducation(currentEducation.id, formData);
@@ -87,23 +126,24 @@ const Education = () => {
     }
   };
 
-  const handleDeleteEducation = async (id) => {
-    if (window.confirm('Are you sure you want to delete this education entry?')) {
-      setLoading(true);
-      try {
-        await profileApi.deleteEducation(id);
-        fetchEducations();
-        setError(null);
-      } catch (err) {
-        if (err.message.includes('Job seeker profile not found')) {
-          setError('Please complete your job seeker profile to delete educations.');
-        } else {
-          setError(err.message);
-        }
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const handleDeleteEducation = async () => {
+    if (!deleteId) return;
+    
+    setLoading(true);
+    try {
+      await profileApi.deleteEducation(deleteId);
+      setDeleteId(null);
+      fetchEducations();
+      setError(null);
+    } catch (err) {
+      if (err.message.includes('Job seeker profile not found')) {
+        setError('Please complete your job seeker profile to delete educations.');
+      } else {
+        setError(err.message);
       }
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,6 +170,7 @@ const Education = () => {
       description: '',
     });
     setCurrentEducation(null);
+    setValidationErrors({});
   };
 
   return (
@@ -137,7 +178,7 @@ const Education = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-green-700 border-b pb-2">Education</h2>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => { resetForm(); setIsAddModalOpen(true); }}
           className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
         >
           Add Education
@@ -172,7 +213,7 @@ const Education = () => {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDeleteEducation(edu.id)}
+                  onClick={() => setDeleteId(edu.id)}
                   className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
                 >
                   Delete
@@ -185,7 +226,7 @@ const Education = () => {
 
       {/* Add Education Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl max-w-lg w-full">
             <h3 className="text-xl font-bold mb-4">Add Education</h3>
             <form onSubmit={handleAddEducation}>
@@ -197,8 +238,11 @@ const Education = () => {
                   value={formData.institution}
                   onChange={handleInputChange}
                   required
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${validationErrors.institution ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {validationErrors.institution && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.institution}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Degree</label>
@@ -208,8 +252,11 @@ const Education = () => {
                   value={formData.degree}
                   onChange={handleInputChange}
                   required
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${validationErrors.degree ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {validationErrors.degree && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.degree}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Field of Study</label>
@@ -241,8 +288,11 @@ const Education = () => {
                     name="end_date"
                     value={formData.end_date}
                     onChange={handleInputChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                    className={`w-full mt-1 px-3 py-2 border ${validationErrors.end_date ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                   />
+                  {validationErrors.end_date && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.end_date}</p>
+                  )}
                 </div>
               </div>
               <div className="mb-4">
@@ -277,7 +327,7 @@ const Education = () => {
 
       {/* Edit Education Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl max-w-lg w-full">
             <h3 className="text-xl font-bold mb-4">Edit Education</h3>
             <form onSubmit={handleEditEducation}>
@@ -289,8 +339,11 @@ const Education = () => {
                   value={formData.institution}
                   onChange={handleInputChange}
                   required
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${validationErrors.institution ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {validationErrors.institution && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.institution}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Degree</label>
@@ -300,8 +353,11 @@ const Education = () => {
                   value={formData.degree}
                   onChange={handleInputChange}
                   required
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${validationErrors.degree ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {validationErrors.degree && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.degree}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Field of Study</label>
@@ -333,8 +389,11 @@ const Education = () => {
                     name="end_date"
                     value={formData.end_date}
                     onChange={handleInputChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                    className={`w-full mt-1 px-3 py-2 border ${validationErrors.end_date ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                   />
+                  {validationErrors.end_date && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.end_date}</p>
+                  )}
                 </div>
               </div>
               <div className="mb-4">
@@ -363,6 +422,30 @@ const Education = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-2">Confirm Deletion</h3>
+            <p className="mb-4 text-gray-600">Are you sure you want to delete this education entry? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteEducation}
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

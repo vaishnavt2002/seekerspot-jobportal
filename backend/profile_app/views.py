@@ -100,9 +100,7 @@ class ProfilePictureView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        """
-        Update the user's profile picture.
-        """
+
         user = request.user
         serializer = ProfilePictureSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
@@ -111,9 +109,6 @@ class ProfilePictureView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        """
-        Remove the user's profile picture.
-        """
         user = request.user
         if user.profile_picture:
             user.profile_picture.delete(save=True)

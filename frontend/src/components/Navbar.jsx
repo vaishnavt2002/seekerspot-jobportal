@@ -28,7 +28,7 @@ export default function Navbar() {
   return (
     <nav className="bg-white shadow-sm px-20 py-3 flex items-center justify-between">
       <div className="flex items-center">
-        <SeekersSpotLogo className="h-8 w-auto" />
+        <Link to="/"><SeekersSpotLogo className="h-8 w-auto" /></Link>
       </div>
 
       <div className="hidden md:flex gap-6 items-center text-sm text-gray-700">

@@ -61,8 +61,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,  # No rotation
-    "BLACKLIST_AFTER_ROTATION": False,  # No blacklisting
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
 }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -75,7 +75,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Vite default port
+    'http://localhost:5173', 
 ]
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
 

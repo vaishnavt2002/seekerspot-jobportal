@@ -12,7 +12,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   const menuItems = [
-    { name: "Dashboard", path: "/dashboard" },
+    { name: "Dashboard", path: "/jobprovider/dashboard" },
     { name: "Job Posts", path: "/jobprovider/job-posts" },
     { name: "Applicants", path: "/applicants" },
     { name: "Shortlisted Applicants", path: "/shortlisted" },

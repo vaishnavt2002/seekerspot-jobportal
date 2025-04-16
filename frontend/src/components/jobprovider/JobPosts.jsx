@@ -23,6 +23,7 @@ const JobPosts = () => {
     application_deadline: '',
     status: 'DRAFT',
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchJobPosts();
@@ -38,15 +39,55 @@ const JobPosts = () => {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (formData.title.length < 3) {
+      newErrors.title = 'Title must be at least 3 characters long';
+    }
+    
+    if (formData.description.length < 5) {
+      newErrors.description = 'Description must be at least 5 characters long';
+    }
+    
+    const validRequirements = formData.requirements.filter(r => r.trim() !== '');
+    if (validRequirements.length === 0) {
+      newErrors.requirements = 'At least one requirement is required';
+    }
+    
+    const validResponsibilities = formData.responsibilities.filter(r => r.trim() !== '');
+    if (validResponsibilities.length === 0) {
+      newErrors.responsibilities = 'At least one responsibility is required';
+    }
+    
+    if (formData.location.length < 2) {
+      newErrors.location = 'Location must be at least 2 characters long';
+    }
+    
+    if (!formData.application_deadline) {
+      newErrors.application_deadline = 'Application deadline is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: null });
+    }
   };
 
   const handleArrayInputChange = (index, field, value) => {
     const updatedArray = [...formData[field]];
     updatedArray[index] = value;
     setFormData({ ...formData, [field]: updatedArray });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
   };
 
   const addArrayField = (field) => {
@@ -56,10 +97,16 @@ const JobPosts = () => {
   const removeArrayField = (index, field) => {
     const updatedArray = formData[field].filter((_, i) => i !== index);
     setFormData({ ...formData, [field]: updatedArray });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
       const cleanedData = {
         ...formData,
@@ -97,10 +144,14 @@ const JobPosts = () => {
     });
     setSelectedJob(job);
     setEditModalOpen(true);
+    setErrors({});
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     try {
       const cleanedData = {
         ...formData,
@@ -158,6 +209,7 @@ const JobPosts = () => {
       application_deadline: '',
       status: 'DRAFT',
     });
+    setErrors({});
   };
 
   const formatDate = (dateString) => {
@@ -233,9 +285,10 @@ const JobPosts = () => {
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.title ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Description</label>
@@ -243,10 +296,11 @@ const JobPosts = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.description ? 'border-red-500' : ''}`}
                   rows="4"
                   required
                 />
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Requirements</label>
@@ -256,7 +310,7 @@ const JobPosts = () => {
                       type="text"
                       value={req}
                       onChange={(e) => handleArrayInputChange(index, 'requirements', e.target.value)}
-                      className="w-full border rounded px-3 py-2"
+                      className={`w-full border rounded px-3 py-2 ${errors.requirements ? 'border-red-500' : ''}`}
                     />
                     {formData.requirements.length > 1 && (
                       <button
@@ -269,6 +323,7 @@ const JobPosts = () => {
                     )}
                   </div>
                 ))}
+                {errors.requirements && <p className="text-red-500 text-sm mt-1">{errors.requirements}</p>}
                 <button
                   type="button"
                   onClick={() => addArrayField('requirements')}
@@ -285,7 +340,7 @@ const JobPosts = () => {
                       type="text"
                       value={resp}
                       onChange={(e) => handleArrayInputChange(index, 'responsibilities', e.target.value)}
-                      className="w-full border rounded px-3 py-2"
+                      className={`w-full border rounded px-3 py-2 ${errors.responsibilities ? 'border-red-500' : ''}`}
                     />
                     {formData.responsibilities.length > 1 && (
                       <button
@@ -298,6 +353,7 @@ const JobPosts = () => {
                     )}
                   </div>
                 ))}
+                {errors.responsibilities && <p className="text-red-500 text-sm mt-1">{errors.responsibilities}</p>}
                 <button
                   type="button"
                   onClick={() => addArrayField('responsibilities')}
@@ -313,9 +369,10 @@ const JobPosts = () => {
                   name="location"
                   value={formData.location}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.location ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Job Type</label>
@@ -406,9 +463,10 @@ const JobPosts = () => {
                   name="application_deadline"
                   value={formData.application_deadline}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.application_deadline ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.application_deadline && <p className="text-red-500 text-sm mt-1">{errors.application_deadline}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Status</label>
@@ -456,9 +514,10 @@ const JobPosts = () => {
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.title ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Description</label>
@@ -466,10 +525,11 @@ const JobPosts = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.description ? 'border-red-500' : ''}`}
                   rows="4"
                   required
                 />
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Requirements</label>
@@ -479,7 +539,7 @@ const JobPosts = () => {
                       type="text"
                       value={req}
                       onChange={(e) => handleArrayInputChange(index, 'requirements', e.target.value)}
-                      className="w-full border rounded px-3 py-2"
+                      className={`w-full border rounded px-3 py-2 ${errors.requirements ? 'border-red-500' : ''}`}
                     />
                     {formData.requirements.length > 1 && (
                       <button
@@ -492,6 +552,7 @@ const JobPosts = () => {
                     )}
                   </div>
                 ))}
+                {errors.requirements && <p className="text-red-500 text-sm mt-1">{errors.requirements}</p>}
                 <button
                   type="button"
                   onClick={() => addArrayField('requirements')}
@@ -508,7 +569,7 @@ const JobPosts = () => {
                       type="text"
                       value={resp}
                       onChange={(e) => handleArrayInputChange(index, 'responsibilities', e.target.value)}
-                      className="w-full border rounded px-3 py-2"
+                      className={`w-full border rounded px-3 py-2 ${errors.responsibilities ? 'border-red-500' : ''}`}
                     />
                     {formData.responsibilities.length > 1 && (
                       <button
@@ -521,6 +582,7 @@ const JobPosts = () => {
                     )}
                   </div>
                 ))}
+                {errors.responsibilities && <p className="text-red-500 text-sm mt-1">{errors.responsibilities}</p>}
                 <button
                   type="button"
                   onClick={() => addArrayField('responsibilities')}
@@ -536,9 +598,10 @@ const JobPosts = () => {
                   name="location"
                   value={formData.location}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.location ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Job Type</label>
@@ -629,9 +692,10 @@ const JobPosts = () => {
                   name="application_deadline"
                   value={formData.application_deadline}
                   onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${errors.application_deadline ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.application_deadline && <p className="text-red-500 text-sm mt-1">{errors.application_deadline}</p>}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Status</label>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import profileApi from '../../api/profileApi';
 
 const PersonalDetails = () => {
-  // Initialize state with default values
   const [details, setDetails] = useState({
     first_name: '',
     last_name: '',
@@ -25,6 +24,7 @@ const PersonalDetails = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   // Fetch personal details on mount
   useEffect(() => {
@@ -62,16 +62,57 @@ const PersonalDetails = () => {
     }
   };
 
+  const validateForm = () => {
+    const errors = {};
+    const nameRegex = /^[^\d]+$/;
+    
+    // First name validation
+    if (!formData.first_name || formData.first_name.length < 3) {
+      errors.first_name = 'First name must be at least 3 characters long';
+    } else if (!nameRegex.test(formData.first_name)) {
+      errors.first_name = 'First name cannot contain numbers';
+    }
+    
+    // Last name validation
+    if (!formData.last_name || formData.last_name.length < 1) {
+      errors.last_name = 'Last name is required';
+    } else if (!nameRegex.test(formData.last_name)) {
+      errors.last_name = 'Last name cannot contain numbers';
+    }
+    
+    // Summary validation
+    if (!formData.summary || formData.summary.length < 6) {
+      errors.summary = 'Summary must be at least 6 characters long';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+    
+    // Clear the error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
   };
 
   const handleEditDetails = async (e) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
     try {
       // Prepare the data to submit
@@ -81,7 +122,7 @@ const PersonalDetails = () => {
         summary: formData.summary || null,
         experience: formData.experience ? parseInt(formData.experience, 10) : 0,
         current_salary: formData.current_salary ? parseInt(formData.current_salary, 10) : null,
-        expected_salary: formData.expected_salary ? parseInt(formData.expected_salary, 10) : 0,  // Fixed: using expected_salary value
+        expected_salary: formData.expected_salary ? parseInt(formData.expected_salary, 10) : 0,
         is_available: formData.is_available,
       };
       
@@ -108,6 +149,8 @@ const PersonalDetails = () => {
 
   const openEditModal = () => {
     setIsEditModalOpen(true);
+    // Reset form errors when opening the modal
+    setFormErrors({});
   };
 
   // Show loading state when data is being fetched initially
@@ -156,19 +199,11 @@ const PersonalDetails = () => {
           </p>
         </div>
 
-        {/* Email */}
-        <div>
-          <label className="text-sm text-gray-600">Email</label>
-          <p className="mt-1 px-4 py-2 rounded-md bg-gray-100 border border-gray-300 text-gray-700">
-            {details.email || 'Not provided'}
-          </p>
-        </div>
-
         {/* Current Salary */}
         <div>
           <label className="text-sm text-gray-600">Current Salary</label>
           <p className="mt-1 px-4 py-2 rounded-md bg-gray-100 border border-gray-300 text-gray-700">
-            {details.current_salary != null ? `$${details.current_salary}` : 'Not provided'}
+            {details.current_salary != null ? `₹${details.current_salary}` : 'Not provided'}
           </p>
         </div>
 
@@ -176,7 +211,7 @@ const PersonalDetails = () => {
         <div>
           <label className="text-sm text-gray-600">Expected Salary</label>
           <p className="mt-1 px-4 py-2 rounded-md bg-gray-100 border border-gray-300 text-gray-700">
-            {details.expected_salary != null ? `$${details.expected_salary}` : 'Not provided'}
+            {details.expected_salary != null ? `₹${details.expected_salary}` : 'Not provided'}
           </p>
         </div>
 
@@ -218,8 +253,11 @@ const PersonalDetails = () => {
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${formErrors.first_name ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {formErrors.first_name && (
+                  <p className="mt-1 text-sm text-red-500">{formErrors.first_name}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Last Name</label>
@@ -228,8 +266,11 @@ const PersonalDetails = () => {
                   name="last_name"
                   value={formData.last_name}
                   onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${formErrors.last_name ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {formErrors.last_name && (
+                  <p className="mt-1 text-sm text-red-500">{formErrors.last_name}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Summary</label>
@@ -237,8 +278,11 @@ const PersonalDetails = () => {
                   name="summary"
                   value={formData.summary}
                   onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full mt-1 px-3 py-2 border ${formErrors.summary ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 ></textarea>
+                {formErrors.summary && (
+                  <p className="mt-1 text-sm text-red-500">{formErrors.summary}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Experience (years)</label>
@@ -252,7 +296,7 @@ const PersonalDetails = () => {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Current Salary</label>
+                <label className="block text-sm font-medium text-gray-700">Current Salary (₹)</label>
                 <input
                   type="number"
                   name="current_salary"
@@ -263,7 +307,7 @@ const PersonalDetails = () => {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Expected Salary</label>
+                <label className="block text-sm font-medium text-gray-700">Expected Salary (₹)</label>
                 <input
                   type="number"
                   name="expected_salary"
