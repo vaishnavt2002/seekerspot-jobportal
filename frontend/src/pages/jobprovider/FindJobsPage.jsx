@@ -1,5 +1,5 @@
 import React from 'react'
-import FindJobs from '../../components/jobprovider/FindJobs'
+import FindJobs from '../../components/jobseeker/FindJobs'
 
 const FindJobsPage = () => {
   return (

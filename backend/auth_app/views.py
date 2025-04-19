@@ -22,19 +22,15 @@ class LoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        logger.debug(f"Login attempt: {email}")
         user = authenticate(request, email=email, password=password)
         if user:
             if not user.is_verified:
-                logger.debug("User not verified")
                 return Response({'error': 'Verification failed. Sign up again'}, status=status.HTTP_403_FORBIDDEN)
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
-            logger.debug(f"Tokens: access={access_token}, refresh={refresh_token}")
             cache_key = f"logout_{user.id}"
             cache.delete(cache_key)
-            logger.debug(f"Cleared logout flag for user {user.email}")
             response = Response({
                 'access': access_token,
                 'refresh': refresh_token,
@@ -57,20 +53,15 @@ class LoginView(APIView):
                 max_age=24 * 60 * 60
             )
             return response
-        logger.debug("Invalid credentials")
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 class CookieTokenRefreshView(APIView):
     def post(self, request):
-        logger.debug(f"Cookies: {request.COOKIES}")
         refresh_token = request.COOKIES.get('refresh_token')
-        if not refresh_token:
-            logger.debug("No refresh token")
-            return Response({'error': 'Refresh token missing'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not refresh_token:            return Response({'error': 'Refresh token missing'}, status=status.HTTP_401_UNAUTHORIZED)
         try:
             refresh = RefreshToken(refresh_token)
             refresh.verify()
             access_token = str(refresh.access_token)
-            logger.debug(f"New access token: {access_token}")
             response = Response({'access': access_token})
             response.set_cookie(
                 key='access_token',
@@ -82,7 +73,6 @@ class CookieTokenRefreshView(APIView):
             )
             return response
         except Exception as e:
-            logger.error(f"Refresh error: {str(e)}")
             return Response({'error': f'Invalid refresh token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
 class SignupView(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -229,10 +219,8 @@ class LogoutView(APIView):
         refresh_token = request.COOKIES.get('refresh_token')
 
         if user and refresh_token:
-            # Mark user as logged out in cache (expires with refresh token)
             cache_key = f"logout_{user.id}"
-            cache.set(cache_key, True, timeout=24 * 60 * 60)  # Matches refresh_token lifetime
-            logger.debug(f"User {user.email} marked as logged out")
+            cache.set(cache_key, True, timeout=24 * 60 * 60) 
 
         response = Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
         response.delete_cookie('access_token')

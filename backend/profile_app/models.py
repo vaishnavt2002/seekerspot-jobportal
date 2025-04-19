@@ -1,6 +1,7 @@
 
 from django.db import models
 from auth_app.models import JobSeeker
+from jobpost_app.models import Skills
 
 class Education(models.Model):
     job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE, related_name='educations')
@@ -26,3 +27,15 @@ class WorkExperience(models.Model):
 
     def __str__(self):
         return f"{self.title} at {self.company}"
+
+
+class JobSeekerSkill(models.Model):
+    job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE, related_name='skills')
+    skill = models.ForeignKey(Skills, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('job_seeker', 'skill')  # Prevent duplicate skills per job seeker
+
+    def __str__(self):
+        return f"{self.job_seeker} - {self.skill.name}"

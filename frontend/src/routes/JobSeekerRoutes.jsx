@@ -4,6 +4,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import PublicRouteWithRedirect from '../components/PublicRouteWithRedirect';
 import ProfilePage from '../pages/jobseeker/ProfilePage';
 import FindJobsPage from '../pages/jobprovider/FindJobsPage';
+import JobPostingPage from '../pages/jobseeker/JobPostingPage';
 
 const JobSeekerRoutes = [
   {
@@ -31,6 +32,14 @@ const JobSeekerRoutes = [
         element: (
           <ProtectedRoute role="job_seeker">
             <FindJobsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'job/:jobId',
+        element: (
+          <ProtectedRoute role="job_seeker">
+            <JobPostingPage />
           </ProtectedRoute>
         ),
       },

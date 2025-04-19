@@ -9,5 +9,8 @@ urlpatterns = [
     path('personal-details/', PersonalDetailsView.as_view(), name='personal-details'),
     path('profile-picture/', ProfilePictureView.as_view(), name='profile-picture'),
     path('job-provider-profile/', JobProviderProfileView.as_view(), name='job-provider-profile'),
+    path('skills/search/', SkillSearchView.as_view(), name='skill-search'),
+    path('skills/', JobSeekerSkillView.as_view(), name='jobseeker-skills'),
+    path('skills/<int:skill_id>/', JobSeekerSkillDetailView.as_view(), name='jobseeker-skill-detail'),
 ]
 

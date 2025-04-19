@@ -129,3 +129,49 @@ class JobProviderProfileView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class SkillSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("query", "")
+        job_seeker = request.user.job_seeker_profile
+        # Exclude skills already associated with the job seeker
+        existing_skill_ids = JobSeekerSkill.objects.filter(job_seeker=job_seeker).values_list('skill_id', flat=True)
+        skills = Skills.objects.filter(name__icontains=query).exclude(id__in=existing_skill_ids)[:10]
+        serializer = SkillSerializer(skills, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class JobSeekerSkillView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        job_seeker = request.user.job_seeker_profile
+        skills = JobSeekerSkill.objects.filter(job_seeker=job_seeker)
+        serializer = JobSeekerSkillSerializer(skills, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        job_seeker = request.user.job_seeker_profile
+        serializer = JobSeekerSkillSerializer(data=request.data, context={'request': request, 'job_seeker': job_seeker})
+        if serializer.is_valid():
+            instances = serializer.save()
+            if isinstance(instances, list):
+                # Bulk addition
+                return Response(JobSeekerSkillSerializer(instances, many=True).data, status=status.HTTP_201_CREATED)
+            else:
+                # Single addition
+                return Response(JobSeekerSkillSerializer(instances).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class JobSeekerSkillDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, skill_id):
+        job_seeker = request.user.job_seeker_profile
+        try:
+            job_seeker_skill = JobSeekerSkill.objects.get(job_seeker=job_seeker, skill_id=skill_id)
+            job_seeker_skill.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except JobSeekerSkill.DoesNotExist:
+            return Response({"error": "Skill not found in your profile."}, status=status.HTTP_404_NOT_FOUND)

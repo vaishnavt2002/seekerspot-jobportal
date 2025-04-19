@@ -128,11 +128,9 @@ const PersonalDetails = () => {
       
       console.log('Submitting Data:', submitData);
       
-      // Since axiosInstance already extracts response.data, we get the data directly
       const updatedData = await profileApi.updatePersonalDetails(submitData);
       console.log('Update Response:', updatedData);
       
-      // Update the local state with the returned data
       if (updatedData) {
         setDetails(updatedData);
       }
@@ -149,16 +147,14 @@ const PersonalDetails = () => {
 
   const openEditModal = () => {
     setIsEditModalOpen(true);
-    // Reset form errors when opening the modal
+  
     setFormErrors({});
   };
 
-  // Show loading state when data is being fetched initially
   if (loading && Object.keys(details).every(key => !details[key])) {
     return <p className="text-gray-600">Loading personal details...</p>;
   }
 
-  // Show error message if fetch failed
   if (error && !Object.keys(details).some(key => details[key])) {
     return <p className="text-red-500">Error: {error}</p>;
   }
@@ -175,7 +171,6 @@ const PersonalDetails = () => {
         </button>
       </div>
       
-      {/* Show error message if update failed */}
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}

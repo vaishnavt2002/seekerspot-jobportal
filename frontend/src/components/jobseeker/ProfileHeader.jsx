@@ -9,7 +9,6 @@ const ProfileHeader = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch user data on mount
   useEffect(() => {
     fetchUserData();
   }, []);
@@ -18,7 +17,7 @@ const ProfileHeader = () => {
     setLoading(true);
     try {
       const response = await profileApi.getPersonalDetails();
-      console.log('ProfileHeader Fetch Response:', response); // Debug
+      console.log('ProfileHeader Fetch Response:', response);
       setUserData(response || {});
       setError(null);
     } catch (err) {
@@ -48,7 +47,7 @@ const ProfileHeader = () => {
       setSelectedFile(null);
       setPreviewUrl(null);
       setIsModalOpen(false);
-      await fetchUserData(); // Refresh data
+      await fetchUserData(); 
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to upload profile picture.');
@@ -65,7 +64,7 @@ const ProfileHeader = () => {
       setSelectedFile(null);
       setPreviewUrl(null);
       setIsModalOpen(false);
-      await fetchUserData(); // Refresh data
+      await fetchUserData();
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to remove profile picture.');
@@ -94,7 +93,7 @@ const ProfileHeader = () => {
     ? `${userData.first_name} ${userData.last_name || ''}`.trim()
     : 'User Name';
   const displayEmail = userData?.email || 'user@example.com';
-  const imageUrl =`http://localhost:8000${userData?.profile_picture}` || 'https://via.placeholder.com/150';
+  const imageUrl =`http://localhost:8000${userData?.profile_picture}`;
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-white shadow rounded-lg">

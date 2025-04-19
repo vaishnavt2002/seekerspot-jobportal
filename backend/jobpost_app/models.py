@@ -1,8 +1,18 @@
 from django.db import models
 
-from auth_app.models import JobProvider
+from auth_app.models import JobProvider, JobSeeker
 
 # Create your models here.
+class Skills(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
+    category = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+
+
 class JobPost(models.Model):
     JOB_TYPE_CHOICES = (
         ('REMOTE', 'Remote'),
@@ -40,6 +50,7 @@ class JobPost(models.Model):
     location = models.CharField(max_length=255)
     job_type = models.CharField(max_length=20, choices=JOB_TYPE_CHOICES)
     employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES)
+    skills = models.ManyToManyField(Skills, related_name='job_posts')
     domain = models.CharField(max_length=50, choices=DOMAIN_CHOICES)
     experience_level = models.IntegerField()  # Years of experience
     min_salary = models.IntegerField()

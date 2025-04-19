@@ -16,6 +16,7 @@ const JobPosts = () => {
     location: '',
     job_type: 'REMOTE',
     employment_type: 'FULL_TIME',
+    skill_ids: [],
     domain: 'IT',
     experience_level: 0,
     min_salary: 0,
@@ -24,6 +25,10 @@ const JobPosts = () => {
     status: 'DRAFT',
   });
   const [errors, setErrors] = useState({});
+  const [skillSearch, setSkillSearch] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false); // Added for loading state
 
   useEffect(() => {
     fetchJobPosts();
@@ -39,33 +44,89 @@ const JobPosts = () => {
     }
   };
 
+  const searchSkills = async (query) => {
+    if (query.length < 2) {
+      setSkillSuggestions([]);
+      return;
+    }
+    setIsLoadingSkills(true);
+    try {
+      const skills = await jobApi.searchSkills(query);
+      console.log('Skills response:', skills); // Debug: Log the response
+      if (Array.isArray(skills)) {
+        setSkillSuggestions(skills);
+      } else {
+        console.warn('Skills response is not an array:', skills);
+        setSkillSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Search skills error:', error);
+      setSkillSuggestions([]);
+      alert('Failed to load skills. Please try again.');
+    } finally {
+      setIsLoadingSkills(false);
+    }
+  };
+
+  const handleSkillSearchChange = (e) => {
+    const query = e.target.value;
+    setSkillSearch(query);
+    searchSkills(query);
+  };
+
+  const handleSkillSelect = (skill) => {
+    console.log('Selected skill:', skill); // Debug: Log selected skill
+    if (!selectedSkills.find((s) => s.id === skill.id)) {
+      setSelectedSkills([...selectedSkills, skill]);
+      setFormData({
+        ...formData,
+        skill_ids: [...formData.skill_ids, skill.id],
+      });
+    }
+    setSkillSearch('');
+    setSkillSuggestions([]);
+  };
+
+  const handleSkillRemove = (skillId) => {
+    console.log('Removing skill ID:', skillId); // Debug: Log removed skill
+    setSelectedSkills(selectedSkills.filter((s) => s.id !== skillId));
+    setFormData({
+      ...formData,
+      skill_ids: formData.skill_ids.filter((id) => id !== skillId),
+    });
+  };
+
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (formData.title.length < 3) {
       newErrors.title = 'Title must be at least 3 characters long';
     }
-    
+
     if (formData.description.length < 5) {
       newErrors.description = 'Description must be at least 5 characters long';
     }
-    
-    const validRequirements = formData.requirements.filter(r => r.trim() !== '');
+
+    const validRequirements = formData.requirements.filter((r) => r.trim() !== '');
     if (validRequirements.length === 0) {
       newErrors.requirements = 'At least one requirement is required';
     }
-    
-    const validResponsibilities = formData.responsibilities.filter(r => r.trim() !== '');
+
+    const validResponsibilities = formData.responsibilities.filter((r) => r.trim() !== '');
     if (validResponsibilities.length === 0) {
       newErrors.responsibilities = 'At least one responsibility is required';
     }
-    
+
     if (formData.location.length < 2) {
       newErrors.location = 'Location must be at least 2 characters long';
     }
-    
+
     if (!formData.application_deadline) {
       newErrors.application_deadline = 'Application deadline is required';
+    }
+
+    if (formData.skill_ids.length === 0) {
+      newErrors.skill_ids = 'At least one skill is required';
     }
 
     setErrors(newErrors);
@@ -75,7 +136,6 @@ const JobPosts = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({ ...errors, [name]: null });
     }
@@ -116,13 +176,14 @@ const JobPosts = () => {
           ? new Date(formData.application_deadline).toISOString()
           : null,
       };
+      console.log('Submitting data:', cleanedData);
       await jobApi.createJobPost(cleanedData);
       setAddModalOpen(false);
       resetForm();
       fetchJobPosts();
     } catch (error) {
       console.error('Create job post error:', error);
-      alert('Failed to create job post: ' + error.message);
+      alert('Failed to create job post: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -135,6 +196,7 @@ const JobPosts = () => {
       location: job.location,
       job_type: job.job_type,
       employment_type: job.employment_type,
+      skill_ids: job.skills.map((s) => s.id),
       domain: job.domain,
       experience_level: job.experience_level,
       min_salary: job.min_salary,
@@ -142,6 +204,7 @@ const JobPosts = () => {
       application_deadline: job.application_deadline ? job.application_deadline.split('T')[0] : '',
       status: job.status,
     });
+    setSelectedSkills(job.skills);
     setSelectedJob(job);
     setEditModalOpen(true);
     setErrors({});
@@ -161,13 +224,14 @@ const JobPosts = () => {
           ? new Date(formData.application_deadline).toISOString()
           : null,
       };
+      console.log('Updating data:', cleanedData); // Debug: Log updated data
       await jobApi.updateJobPost(selectedJob.id, cleanedData);
       setEditModalOpen(false);
       resetForm();
       fetchJobPosts();
     } catch (error) {
       console.error('Update job post error:', error);
-      alert('Failed to update job post: ' + error.message);
+      alert('Failed to update job post: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -202,6 +266,7 @@ const JobPosts = () => {
       location: '',
       job_type: 'REMOTE',
       employment_type: 'FULL_TIME',
+      skill_ids: [],
       domain: 'IT',
       experience_level: 0,
       min_salary: 0,
@@ -209,6 +274,9 @@ const JobPosts = () => {
       application_deadline: '',
       status: 'DRAFT',
     });
+    setSelectedSkills([]);
+    setSkillSearch('');
+    setSkillSuggestions([]);
     setErrors({});
   };
 
@@ -361,6 +429,59 @@ const JobPosts = () => {
                 >
                   + Add Responsibility
                 </button>
+              </div>
+              <div className="mb-4 relative">
+                <label className="block text-sm font-medium mb-1">Skills</label>
+                <input
+                  type="text"
+                  value={skillSearch}
+                  onChange={handleSkillSearchChange}
+                  className={`w-full border rounded px-3 py-2 ${errors.skill_ids ? 'border-red-500' : ''}`}
+                  placeholder="Search for skills..."
+                  disabled={isLoadingSkills}
+                />
+                {isLoadingSkills && <p className="text-gray-500 text-sm mt-1">Loading skills...</p>}
+                {skillSuggestions.length > 0 ? (
+                  <ul className="absolute z-50 bg-white border rounded mt-1 max-h-40 overflow-y-auto w-full shadow-lg">
+                    {skillSuggestions.map((skill) => (
+                      <li
+                        key={skill.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleSkillSelect(skill)}
+                      >
+                        {skill.name} ({skill.category || 'No category'})
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  skillSearch.length >= 2 && !isLoadingSkills && (
+                    <p className="text-gray-500 text-sm mt-1">No skills found</p>
+                  )
+                )}
+                {selectedSkills.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedSkills.map((skill) => (
+                      <div
+                        key={skill.id}
+                        className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"
+                      >
+                        {skill.name}
+                        <button
+                          type="button"
+                          onClick={() => handleSkillRemove(skill.id)}
+                          className="ml-2 text-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.skill_ids && <p className="text-red-500 text-sm mt-1">{errors.skill_ids}</p>}
+                {/* Debug: Display skillSuggestions length */}
+                <p className="text-gray-500 text-sm mt-1">
+                  Suggestions count: {skillSuggestions.length}
+                </p>
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Location</label>
@@ -591,6 +712,59 @@ const JobPosts = () => {
                   + Add Responsibility
                 </button>
               </div>
+              <div className="mb-4 relative">
+                <label className="block text-sm font-medium mb-1">Skills</label>
+                <input
+                  type="text"
+                  value={skillSearch}
+                  onChange={handleSkillSearchChange}
+                  className={`w-full border rounded px-3 py-2 ${errors.skill_ids ? 'border-red-500' : ''}`}
+                  placeholder="Search for skills..."
+                  disabled={isLoadingSkills}
+                />
+                {isLoadingSkills && <p className="text-gray-500 text-sm mt-1">Loading skills...</p>}
+                {skillSuggestions.length > 0 ? (
+                  <ul className="absolute z-50 bg-white border rounded mt-1 max-h-40 overflow-y-auto w-full shadow-lg">
+                    {skillSuggestions.map((skill) => (
+                      <li
+                        key={skill.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleSkillSelect(skill)}
+                      >
+                        {skill.name} ({skill.category || 'No category'})
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  skillSearch.length >= 2 && !isLoadingSkills && (
+                    <p className="text-gray-500 text-sm mt-1">No skills found</p>
+                  )
+                )}
+                {selectedSkills.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedSkills.map((skill) => (
+                      <div
+                        key={skill.id}
+                        className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"
+                      >
+                        {skill.name}
+                        <button
+                          type="button"
+                          onClick={() => handleSkillRemove(skill.id)}
+                          className="ml-2 text-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.skill_ids && <p className="text-red-500 text-sm mt-1">{errors.skill_ids}</p>}
+                {/* Debug: Display skillSuggestions length */}
+                <p className="text-gray-500 text-sm mt-1">
+                  Suggestions count: {skillSuggestions.length}
+                </p>
+              </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Location</label>
                 <input
@@ -713,7 +887,10 @@ const JobPosts = () => {
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
-                  onClick={() => {setEditModalOpen(false); resetForm();}}
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    resetForm();
+                  }}
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100"
                 >
                   Cancel
@@ -746,6 +923,12 @@ const JobPosts = () => {
             <ul className="list-disc pl-5 mb-2">
               {(selectedJob.responsibilities_display || []).map((resp, index) => (
                 <li key={index}>{resp}</li>
+              ))}
+            </ul>
+            <p className="mb-2"><strong>Skills:</strong></p>
+            <ul className="list-disc pl-5 mb-2">
+              {(selectedJob.skills || []).map((skill, index) => (
+                <li key={index}>{skill.name}</li>
               ))}
             </ul>
             <p className="mb-2"><strong>Location:</strong> {selectedJob.location}</p>

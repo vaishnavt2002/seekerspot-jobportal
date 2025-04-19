@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import Experience from "../../components/jobseeker/Experience";
 import Education from "../../components/jobseeker/Education";
 import SavedJobs from "../../components/jobseeker/SavedJobs";
+import Skill from "../../components/jobseeker/Skill";
 
 const ProfilePage = () => {
       const { loading,isAuthenticated } = useSelector((state) => state.auth);
@@ -64,16 +65,11 @@ const ProfilePage = () => {
           
   return (
     <div className="px-4 sm:px-8 md:px-16 py-8 max-w-screen-xl mx-auto space-y-10">
-      <ProfileHeader
-  name="Vaishnav"
-  email="vaishanvt2@gmail.com"
-  imageUrl="/assets/profile-pic.png"
-  onEdit={() => console.log("Edit button clicked")}
-/>
-
-    <PersonalDetails user={user} />
-    <Experience experiences={experiences}/>
-    <Education education={education}/>
+      <ProfileHeader/>
+    <PersonalDetails />
+    <Experience/>
+    <Education/>
+    <Skill/>
     <SavedJobs savedJobs={savedJobs}/>
     </div>
   );

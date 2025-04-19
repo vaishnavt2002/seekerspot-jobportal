@@ -126,14 +126,56 @@ const profileApi = {
 
   updateJobProviderProfile: async (data) => {
     try {
-      const response = await axiosInstance.put('/profile/job-provider-profile/', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data', // Explicitly set header
-        },
-      });
+      const response = await axiosInstance.put('/profile/job-provider-profile/', data);
       return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to update job provider profile.');
+    }
+  },
+  getJobSeekerSkills: async () => {
+    try {
+      const response = await axiosInstance.get('/profile/skills/');
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch skills');
+    }
+  },
+
+  // Renamed to indicate single skill addition
+  addJobSeekerSkill: async (data) => {
+    try {
+      const response = await axiosInstance.post('/profile/skills/', { skill_id: data.skill_id });
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to add skill');
+    }
+  },
+
+  // New method for adding multiple skills at once
+  addJobSeekerSkills: async (data) => {
+    try {
+      const response = await axiosInstance.post('/profile/skills/', data);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to add skills');
+    }
+  },
+
+  deleteJobSeekerSkill: async (skillId) => {
+    try {
+      const response = await axiosInstance.delete(`/profile/skills/${skillId}/`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to delete skill');
+    }
+  },
+
+  searchSkills: async (query) => {
+    try {
+      const response = await axiosInstance.get('/profile/skills/search/', {params: { query }});
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to search skills');
     }
   },
 };

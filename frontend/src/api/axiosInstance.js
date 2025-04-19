@@ -59,7 +59,6 @@ axiosInstance.interceptors.response.use(
                     .then(response => response.data);
             } catch (refreshError) {
                 console.error('Token refresh failed:', refreshError);
-                // Let the error fall through to the next handler
             }
         }
         

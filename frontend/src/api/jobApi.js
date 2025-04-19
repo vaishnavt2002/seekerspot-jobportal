@@ -40,6 +40,14 @@ const jobApi = {
       throw new Error(error.message || 'Failed to delete job post');
     }
   },
+  searchSkills: async (query) => {
+    try {
+      const response = await axiosInstance.get(`/skills/search/?query=${query}`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to search skills');
+    }
+  },
 };
 
 export default jobApi;

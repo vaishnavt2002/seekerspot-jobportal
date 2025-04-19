@@ -16,7 +16,6 @@ function App() {
       if (!isAuthenticated) {
         dispatch(loginStart());
         try {
-          // Try to get the user profile with the existing token
           const response = await getProfile();
           dispatch(setUser({ user: response.user }));
         } catch (err) {
@@ -26,21 +25,18 @@ function App() {
             dispatch(loginFailure('Server is unreachable'));
             return;
         }
-          // If we got a 401, try to refresh the token
           if (err.status === 401) {
             try {
-              // Try to refresh the token
               await dispatch(refreshTokenThunk()).unwrap();
               
-              // If refresh succeeds, try to get profile again
               const refreshedResponse = await getProfile();
               dispatch(setUser({ user: refreshedResponse.user }));
             } catch (refreshErr) {
               console.error("Token refresh failed:", refreshErr);
-              dispatch(loginFailure('Authentication expired'));
+              dispatch(loginFailure(''));
             }
           } else {
-            dispatch(loginFailure(err.message));
+            dispatch(loginFailure(''));
           }
         }
       }
@@ -49,7 +45,6 @@ function App() {
     checkAuth();
   }, [dispatch, isAuthenticated]);
 
-  // Show loading state while checking authentication
   if (loading) {
     return <Loading/>;
   }

@@ -1,3 +1,4 @@
+from os import read
 from rest_framework import serializers
 from .models import *
 from auth_app.models import *
@@ -106,3 +107,60 @@ class JobProviderProfileSerializer(serializers.ModelSerializer):
             'description',
             'location',
         ]
+
+class SkillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Skills
+        fields = ['id', 'name', 'category']
+
+class JobSeekerSkillSerializer(serializers.ModelSerializer):
+    skill = SkillSerializer(read_only=True)
+    skill_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    skill_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = JobSeekerSkill
+        fields = ['id', 'skill', 'skill_id', 'skill_ids', 'added_at']
+
+    def validate(self, data):
+        if not data.get('skill_id') and not data.get('skill_ids'):
+            raise serializers.ValidationError("Either 'skill_id' or 'skill_ids' must be provided.")
+        if data.get('skill_id') and data.get('skill_ids'):
+            raise serializers.ValidationError("Provide either 'skill_id' or 'skill_ids', not both.")
+        return data
+
+    def validate_skill_id(self, value):
+        if not Skills.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Skill does not exist.")
+        job_seeker = self.context['request'].user.job_seeker_profile
+        if JobSeekerSkill.objects.filter(job_seeker=job_seeker, skill_id=value).exists():
+            raise serializers.ValidationError("This skill is already added to your profile.")
+        return value
+
+    def validate_skill_ids(self, value):
+        job_seeker = self.context['request'].user.job_seeker_profile
+        errors = []
+        for skill_id in value:
+            if not Skills.objects.filter(id=skill_id).exists():
+                errors.append(f"Skill with ID {skill_id} does not exist.")
+            elif JobSeekerSkill.objects.filter(job_seeker=job_seeker, skill_id=skill_id).exists():
+                errors.append(f"Skill with ID {skill_id} is already added to your profile.")
+        if errors:
+            raise serializers.ValidationError(errors)
+        return value
+
+    def create(self, validated_data):
+        job_seeker = self.context['job_seeker']
+        skill_ids = validated_data.pop('skill_ids', None)
+        skill_id = validated_data.pop('skill_id', None)
+
+        if skill_id:
+            skill = Skills.objects.get(id=skill_id)
+            return JobSeekerSkill.objects.create(job_seeker=job_seeker, skill=skill, **validated_data)
+        elif skill_ids:
+            instances = []
+            for skill_id in skill_ids:
+                skill = Skills.objects.get(id=skill_id)
+                instance = JobSeekerSkill.objects.create(job_seeker=job_seeker, skill=skill, **validated_data)
+                instances.append(instance)
+            return instances

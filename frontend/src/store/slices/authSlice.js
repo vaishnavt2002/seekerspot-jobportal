@@ -37,8 +37,6 @@ const authSlice = createSlice({
     loginFailure(state, action) {
       state.loading = false;
       state.error = action.payload;
-      // Don't clear user or authenticated status here, 
-      // as we might refresh the token first
     },
     logoutAction(state) {
       state.user = null;
@@ -62,13 +60,12 @@ const authSlice = createSlice({
       })
       .addCase(refreshTokenThunk.fulfilled, (state) => {
         state.loading = false;
-        // We don't update the user here since we'll fetch the profile separately
       })
       .addCase(refreshTokenThunk.rejected, (state) => {
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
-        state.error = 'Session expired';
+        state.error = '';
       });
   }
 });

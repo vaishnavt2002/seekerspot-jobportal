@@ -12,7 +12,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'user_type', 'profile_picture', 'phone_number', 'is_verified', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
-# auth_app/serializers.py
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES)
