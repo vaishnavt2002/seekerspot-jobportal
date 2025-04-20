@@ -7,5 +7,11 @@ urlpatterns = [
     path('public/job-posts/', PublicJobPostListView.as_view(), name='public-job-post-list'),
     path('skills/search/', SkillSearchView.as_view(), name='skill-search'),
     path("public/jobs/<int:job_id>/", PublicJobPostDetailView.as_view(), name="public-job-post-detail"),
+    path('jobseeker/skills/', JobSeekerSkillsView.as_view(), name='jobseeker-skills'),
+    path('jobseeker/skills/add/', AddSkillsToProfileView.as_view(), name='add-skills-to-profile'),
+    
+    # Job applications
+    path('jobseeker/apply/', ApplyForJobView.as_view(), name='apply-for-job'),
+    path('jobseeker/application-status/<int:job_id>/', ApplicationStatusView.as_view(), name='application-status'),
 ]
 

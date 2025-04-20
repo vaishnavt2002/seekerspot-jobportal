@@ -4,11 +4,13 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from profile_app.permissions import IsJobProvier
-from .models import JobPost, Skills
-from .serializer import JobPostSerializer, PublicJobPostSerializer, SkillSerializer
+from .models import JobPost, Skills, JobApplication
+from .serializer import JobPostSerializer, PublicJobPostSerializer, SkillSerializer,JobApplicationSerializer
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
+from auth_app.models import JobSeeker
+from profile_app.models import JobSeekerSkill
 
 class JobPostView(APIView):
     permission_classes = [IsAuthenticated, IsJobProvier]
@@ -129,3 +131,139 @@ class SkillSearchView(APIView):
         serializer = SkillSerializer(skills, many=True)
         print(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class JobSeekerSkillsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all skills of the logged-in job seeker"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            # Get all skills associated with this job seeker
+            job_seeker_skills = JobSeekerSkill.objects.filter(job_seeker=job_seeker)
+            skills = [js_skill.skill for js_skill in job_seeker_skills]
+            
+            serializer = SkillSerializer(skills, many=True)
+            
+            # Log for debugging
+            print(f"User {request.user.username} has {len(skills)} skills")
+            print(f"Skills: {', '.join([skill.name for skill in skills])}")
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except JobSeeker.DoesNotExist:
+            # Return empty list if job seeker doesn't exist
+            print(f"JobSeeker profile not found for user {request.user.username}")
+            return Response([], status=status.HTTP_200_OK)
+        except Exception as e:
+            # Log any other exception
+            print(f"Error in JobSeekerSkillsView: {str(e)}")
+            return Response([], status=status.HTTP_200_OK)
+
+class AddSkillsToProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Add skills to job seeker profile"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            skill_ids = request.data.get('skill_ids', [])
+            
+            # Add skills to profile
+            for skill_id in skill_ids:
+                try:
+                    skill = Skills.objects.get(id=skill_id)
+                    # Use get_or_create to avoid duplicates
+                    JobSeekerSkill.objects.get_or_create(
+                        job_seeker=job_seeker,
+                        skill=skill
+                    )
+                except Skills.DoesNotExist:
+                    continue
+            
+            # Return updated skills
+            skills = [js_skill.skill for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker)]
+            serializer = SkillSerializer(skills, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class ApplyForJobView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Apply for a job"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            # Changed from job_id to jobpost_id to make it consistent
+            job_id = request.data.get('jobpost_id')
+            
+            if not job_id:
+                return Response(
+                    {"error": "jobpost_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if job exists and is valid
+            try:
+                job = JobPost.objects.get(
+                    id=job_id,
+                    status="PUBLISHED",
+                    is_deleted=False,
+                    application_deadline__gte=timezone.now(),
+                )
+            except JobPost.DoesNotExist:
+                return Response(
+                    {"error": "Job not found or not available for application."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if already applied
+            if JobApplication.objects.filter(jobpost=job, job_seeker=job_seeker).exists():
+                return Response(
+                    {"error": "You have already applied for this job."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create application
+            application = JobApplication.objects.create(
+                jobpost=job,
+                job_seeker=job_seeker,
+                status="APPLIED"
+            )
+            
+            serializer = JobApplicationSerializer(application)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+class ApplicationStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+        """Check application status for a specific job"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            try:
+                application = JobApplication.objects.get(
+                    jobpost_id=job_id,
+                    job_seeker=job_seeker
+                )
+                serializer = JobApplicationSerializer(application)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except JobApplication.DoesNotExist:
+                return Response(
+                    {"status": "NOT_APPLIED"},
+                    status=status.HTTP_200_OK
+                )
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )

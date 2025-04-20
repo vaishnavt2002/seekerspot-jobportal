@@ -1,5 +1,4 @@
 from django.db import models
-
 from auth_app.models import JobProvider, JobSeeker
 
 # Create your models here.
@@ -67,3 +66,30 @@ class JobPost(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.job_provider.company_name}"
+    
+
+
+class JobApplication(models.Model):
+    STATUS_CHOICES = (
+        ('APPLIED', 'Applied'),
+        ('REVIEWING', 'Reviewing'),
+        ('SHORTLISTED', 'Shortlisted'),
+        ('REJECTED', 'Rejected'),
+        ('HIRED', 'Hired'),
+        ('WITHDRAWN', 'Withdrawn'),
+    )
+
+    jobpost = models.ForeignKey(JobPost, on_delete=models.CASCADE, related_name='applications')
+    job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE, related_name='applications')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='APPLIED')
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('jobpost', 'job_seeker')
+
+    def __str__(self):
+        return f"{self.job_seeker.user.username} -> {self.jobpost.title}"
+    
+
+

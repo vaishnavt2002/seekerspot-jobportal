@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import JobPost, Skills
+from .models import JobPost, Skills, JobApplication
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -98,3 +98,26 @@ class PublicJobPostSerializer(serializers.ModelSerializer):
 
     def get_responsibilities_display(self, obj):
         return obj.responsibilities.split("\n") if obj.responsibilities else []
+    
+class JobApplicationSerializer(serializers.ModelSerializer):
+    job_title = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = JobApplication
+        fields = [
+            'id',
+            'jobpost',
+            'job_title',
+            'company_name',
+            'status',
+            'applied_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'jobpost', 'job_seeker', 'status', 'applied_at', 'updated_at']
+    
+    def get_job_title(self, obj):
+        return obj.jobpost.title
+    
+    def get_company_name(self, obj):
+        return obj.jobpost.job_provider.company_name
