@@ -8,23 +8,25 @@ const publicJobApi = {
       throw error; 
     }
   },
+  
   getPublicJobPostById: async (jobId) => {
-    const response = await axiosInstance.get(`/public/jobs/${jobId}/`);
-    return response;
+    try {
+      const response = await axiosInstance.get(`/public/jobs/${jobId}/`);
+      return response;
+    } catch (error) {
+      console.error("Error getting job details:", error);
+      throw error;
+    }
   },
-   // Get skills of the logged-in user
-   getUserSkills: async () => {
+  
+  // Get skills of the logged-in user
+  getUserSkills: async () => {
     try {
       const response = await axiosInstance.get('/jobseeker/skills/');
-      // Check if the response is valid
-      if (response && response.data) {
-        console.log("Skills API response:", response.data);
-        return response.data;
-      }
-      return [];
+      console.log("Skills API response:", response);
+      return response || [];
     } catch (error) {
       console.error("Error in getUserSkills:", error);
-      // If there's an error, return an empty array
       return [];
     }
   },
@@ -32,11 +34,17 @@ const publicJobApi = {
   // Add skills to user profile
   addSkillsToProfile: async (skillIds) => {
     try {
+      if (!skillIds || skillIds.length === 0) {
+        return await publicJobApi.getUserSkills();
+      }
+      
       const response = await axiosInstance.post('/jobseeker/skills/add/', { 
         skill_ids: skillIds 
       });
+      
       return response;
     } catch (error) {
+      console.error("Error adding skills:", error);
       throw error;
     }
   },
@@ -45,12 +53,18 @@ const publicJobApi = {
   applyForJob: async (jobId) => {
     try {
       const response = await axiosInstance.post('/jobseeker/apply/', {
-        jobpost_id: jobId  // Using jobpost_id to match backend
+        jobpost_id: jobId
       });
       return response;
     } catch (error) {
-      console.error("Error applying for job:", error);
-      throw error;
+      // Better error handling with specific messages
+      if (error.fieldErrors && error.fieldErrors.error) {
+        throw new Error(error.fieldErrors.error);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("Failed to apply for the job. Please try again.");
+      }
     }
   },
   
@@ -61,6 +75,7 @@ const publicJobApi = {
       return response;
     } catch (error) {
       console.error("Error checking application status:", error);
+      // Default status if error occurs
       return { status: "NOT_APPLIED" }; 
     }
   }

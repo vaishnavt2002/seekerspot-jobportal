@@ -168,29 +168,39 @@ class AddSkillsToProfileView(APIView):
             job_seeker = JobSeeker.objects.get(user=request.user)
             skill_ids = request.data.get('skill_ids', [])
             
-            # Add skills to profile
+            if not skill_ids:
+                return Response(
+                    {"error": "No skills provided to add."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            added_skills = []
             for skill_id in skill_ids:
                 try:
                     skill = Skills.objects.get(id=skill_id)
                     # Use get_or_create to avoid duplicates
-                    JobSeekerSkill.objects.get_or_create(
+                    obj, created = JobSeekerSkill.objects.get_or_create(
                         job_seeker=job_seeker,
                         skill=skill
                     )
+                    added_skills.append(skill)
                 except Skills.DoesNotExist:
                     continue
             
-            # Return updated skills
-            skills = [js_skill.skill for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker)]
-            serializer = SkillSerializer(skills, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            # Return all updated skills
+            all_skills = [js_skill.skill for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker)]
+            serializer = SkillSerializer(all_skills, many=True)
+            
+            return Response({
+                "message": f"Successfully added {len(added_skills)} skills to your profile",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
         
         except JobSeeker.DoesNotExist:
             return Response(
                 {"error": "Job seeker profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
-
 class ApplyForJobView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -198,7 +208,6 @@ class ApplyForJobView(APIView):
         """Apply for a job"""
         try:
             job_seeker = JobSeeker.objects.get(user=request.user)
-            # Changed from job_id to jobpost_id to make it consistent
             job_id = request.data.get('jobpost_id')
             
             if not job_id:
@@ -236,11 +245,32 @@ class ApplyForJobView(APIView):
             )
             
             serializer = JobApplicationSerializer(application)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Get user skills and job skills for informational purposes
+            user_skill_ids = set(js_skill.skill.id for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker))
+            job_skill_ids = set(skill.id for skill in job.skills.all())
+            
+            # Calculate matching skills percentage
+            total_job_skills = len(job_skill_ids)
+            matching_skills = len(user_skill_ids.intersection(job_skill_ids))
+            match_percentage = (matching_skills / total_job_skills * 100) if total_job_skills > 0 else 0
+            
+            # Include this info in the response
+            response_data = serializer.data
+            response_data.update({
+                "message": "Successfully applied for the job!",
+                "skill_match": {
+                    "matching_skills": matching_skills,
+                    "total_skills": total_job_skills,
+                    "match_percentage": round(match_percentage, 1)
+                }
+            })
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
         
         except JobSeeker.DoesNotExist:
             return Response(
-                {"error": "Job seeker profile not found."},
+                {"error": "Job seeker profile not found. Please complete your profile before applying."},
                 status=status.HTTP_404_NOT_FOUND
             )
 class ApplicationStatusView(APIView):
@@ -258,12 +288,13 @@ class ApplicationStatusView(APIView):
                 serializer = JobApplicationSerializer(application)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except JobApplication.DoesNotExist:
+                # Return a properly formatted response
                 return Response(
-                    {"status": "NOT_APPLIED"},
+                    {"status": "NOT_APPLIED", "message": "You have not applied for this job yet."},
                     status=status.HTTP_200_OK
                 )
         except JobSeeker.DoesNotExist:
             return Response(
-                {"error": "Job seeker profile not found."},
+                {"error": "Job seeker profile not found.", "status": "ERROR"},
                 status=status.HTTP_404_NOT_FOUND
             )

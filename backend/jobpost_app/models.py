@@ -92,4 +92,17 @@ class JobApplication(models.Model):
         return f"{self.job_seeker.user.username} -> {self.jobpost.title}"
     
 
+class SavedJob(models.Model):
+    job_seeker = models.ForeignKey(JobSeeker, on_delete=models.CASCADE, related_name='saved_jobs')
+    jobpost = models.ForeignKey(JobPost, on_delete=models.CASCADE, related_name='saved_by')
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('job_seeker', 'jobpost')  # Prevent saving the same job twice
+
+    def __str__(self):
+        return f"{self.job_seeker.user.username} saved {self.jobpost.title}"
+
+    
+
 
