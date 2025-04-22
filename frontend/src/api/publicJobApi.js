@@ -78,6 +78,40 @@ const publicJobApi = {
       // Default status if error occurs
       return { status: "NOT_APPLIED" }; 
     }
+  },
+  saveJob: async (jobId) => {
+    try {
+      const response = await axiosInstance.post('/jobseeker/saved-jobs/save/', {
+        jobpost_id: jobId
+      });
+      return response;
+    } catch (error) {
+      console.error("Error saving job:", error);
+      throw error;
+    }
+  },
+  
+  // Unsave a job
+  unsaveJob: async (jobId) => {
+    try {
+      const response = await axiosInstance.delete(`/jobseeker/saved-jobs/${jobId}/`);
+      return response;
+    } catch (error) {
+      console.error("Error unsaving job:", error);
+      throw error;
+    }
+  },
+  
+  // Check if a job is saved
+  checkSavedStatus: async (jobId) => {
+    try {
+      const response = await axiosInstance.get(`/jobseeker/saved-jobs/status/${jobId}/`);
+      return response;
+    } catch (error) {
+      console.error("Error checking saved status:", error);
+      // Default not saved if error occurs
+      return { is_saved: false };
+    }
   }
 };
 

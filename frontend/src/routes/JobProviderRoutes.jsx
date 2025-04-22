@@ -3,6 +3,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import JobProviderDashboard from '../pages/jobprovider/Dashboard';
 import ProfilePage from '../pages/jobprovider/ProfilePage';
 import JobPostsPage from '../pages/jobprovider/JobPostsPage';
+import ApplicantsPage from '../pages/jobprovider/ApplicantsPage';
 const JobProviderRoutes = [
   {
     path: '/jobprovider',
@@ -29,6 +30,14 @@ const JobProviderRoutes = [
         element: (
           <ProtectedRoute role="job_provider">
             <JobPostsPage/>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'applicants',
+        element: (
+          <ProtectedRoute role="job_provider">
+            <ApplicantsPage/>
           </ProtectedRoute>
         ),
       },

@@ -98,7 +98,7 @@ class SavedJob(models.Model):
     saved_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('job_seeker', 'jobpost')  # Prevent saving the same job twice
+        unique_together = ('job_seeker', 'jobpost')
 
     def __str__(self):
         return f"{self.job_seeker.user.username} saved {self.jobpost.title}"

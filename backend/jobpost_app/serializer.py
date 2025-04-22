@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import JobPost, Skills, JobApplication
+from .models import *
+from auth_app.models import User
+from profile_app.models import Education, WorkExperience, JobSeekerSkill
+
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -121,3 +124,124 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     
     def get_company_name(self, obj):
         return obj.jobpost.job_provider.company_name
+    
+# save job
+class SavedJobSerializer(serializers.ModelSerializer):
+    job_title = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SavedJob
+        fields = [
+            'id',
+            'jobpost',
+            'job_title',
+            'company_name',
+            'saved_at'
+        ]
+        read_only_fields = ['id', 'job_seeker', 'saved_at']
+    
+    def get_job_title(self, obj):
+        return obj.jobpost.title
+    
+    def get_company_name(self, obj):
+        return obj.jobpost.job_provider.company_name
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+
+class JobSeekerSkillSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='skill.name')
+    category = serializers.CharField(source='skill.category')
+    
+    class Meta:
+        model = JobSeekerSkill
+        fields = ['id', 'name', 'category']
+
+
+class EducationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Education
+        fields = ['id', 'institution', 'degree', 'field_of_study', 'start_date', 'end_date', 'description']
+
+
+class WorkExperienceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkExperience
+        fields = ['id', 'company', 'title', 'location', 'start_date', 'end_date', 'description']
+
+
+class JobSeekerSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    
+    class Meta:
+        model = JobSeeker
+        fields = [
+            'id', 'user', 'resume', 'summary', 'experience', 
+            'current_salary', 'expected_salary', 'is_available'
+        ]
+
+
+class JobPostListSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source='job_provider.company_name')
+    applicants_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = JobPost
+        fields = [
+            'id', 'title', 'company_name', 'location', 'job_type', 
+            'employment_type', 'status', 'application_deadline', 'applicants_count'
+        ]
+    
+    def get_applicants_count(self, obj):
+        return obj.applications.count()
+
+
+class JobApplicationDetailSerializer(serializers.ModelSerializer):
+    job_seeker = JobSeekerSerializer()
+    skills = serializers.SerializerMethodField()
+    education = serializers.SerializerMethodField()
+    work_experience = serializers.SerializerMethodField()
+    skill_match = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = JobApplication
+        fields = [
+            'id', 'jobpost', 'job_seeker', 'status', 'applied_at', 'updated_at',
+            'skills', 'education', 'work_experience', 'skill_match'
+        ]
+    
+    def get_skills(self, obj):
+        job_seeker_skills = JobSeekerSkill.objects.filter(job_seeker=obj.job_seeker)
+        return JobSeekerSkillSerializer(job_seeker_skills, many=True).data
+    
+    def get_education(self, obj):
+        education = Education.objects.filter(job_seeker=obj.job_seeker)
+        return EducationSerializer(education, many=True).data
+    
+    def get_work_experience(self, obj):
+        work_experience = WorkExperience.objects.filter(job_seeker=obj.job_seeker)
+        return WorkExperienceSerializer(work_experience, many=True).data
+    
+    def get_skill_match(self, obj):
+        job_seeker = obj.job_seeker
+        jobpost = obj.jobpost
+        
+        # Get user skills and job skills
+        user_skill_ids = set(js_skill.skill.id for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker))
+        job_skill_ids = set(skill.id for skill in jobpost.skills.all())
+        
+        # Calculate matching skills percentage
+        total_job_skills = len(job_skill_ids)
+        matching_skills = len(user_skill_ids.intersection(job_skill_ids))
+        match_percentage = (matching_skills / total_job_skills * 100) if total_job_skills > 0 else 0
+        
+        return {
+            "matching_skills": matching_skills,
+            "total_skills": total_job_skills,
+            "match_percentage": round(match_percentage, 1)
+        }

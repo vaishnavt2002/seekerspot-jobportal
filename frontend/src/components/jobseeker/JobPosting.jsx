@@ -16,6 +16,8 @@ const JobPosting = () => {
   const [applicationError, setApplicationError] = useState(null);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [addingSkills, setAddingSkills] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingInProgress, setSavingInProgress] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,6 +36,12 @@ const JobPosting = () => {
         const statusResponse = await publicJobApi.checkApplicationStatus(jobId);
         if (statusResponse && statusResponse.status) {
           setApplicationStatus(statusResponse.status);
+        }
+        
+        // Check if job is saved
+        const savedResponse = await publicJobApi.checkSavedStatus(jobId);
+        if (savedResponse && typeof savedResponse.is_saved === 'boolean') {
+          setIsSaved(savedResponse.is_saved);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -65,6 +73,25 @@ const JobPosting = () => {
       setApplicationError(err.message || "Failed to apply for this job. Please try again.");
     } finally {
       setApplyingInProgress(false);
+    }
+  };
+  
+  const handleSaveToggle = async () => {
+    setSavingInProgress(true);
+    try {
+      if (isSaved) {
+        // Unsave the job
+        await publicJobApi.unsaveJob(jobId);
+        setIsSaved(false);
+      } else {
+        // Save the job
+        await publicJobApi.saveJob(jobId);
+        setIsSaved(true);
+      }
+    } catch (err) {
+      console.error("Error toggling save status:", err);
+    } finally {
+      setSavingInProgress(false);
     }
   };
   
@@ -214,8 +241,58 @@ const JobPosting = () => {
               {applicationStatus === "APPLIED" ? "Applied" : applicationStatus}
             </button>
           )}
-          <button className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400">
-            Save
+          <button 
+            className={`flex items-center justify-center ${
+              isSaved 
+                ? "bg-yellow-500 text-white" 
+                : "bg-gray-300 text-black"
+            } px-4 py-2 rounded hover:${
+              isSaved ? "bg-yellow-600" : "bg-gray-400"
+            } disabled:opacity-50`}
+            onClick={handleSaveToggle}
+            disabled={savingInProgress}
+          >
+            {savingInProgress ? (
+              "Processing..."
+            ) : (
+              <>
+                {isSaved ? (
+                  <>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 mr-1" 
+                      viewBox="0 0 20 20" 
+                      fill="currentColor"
+                    >
+                      <path 
+                        fillRule="evenodd" 
+                        d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" 
+                        clipRule="evenodd" 
+                      />
+                    </svg>
+                    Saved
+                  </>
+                ) : (
+                  <>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 mr-1" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" 
+                      />
+                    </svg>
+                    Save
+                  </>
+                )}
+              </>
+            )}
           </button>
         </div>
       </div>

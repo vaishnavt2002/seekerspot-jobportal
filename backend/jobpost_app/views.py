@@ -4,13 +4,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from profile_app.permissions import IsJobProvier
-from .models import JobPost, Skills, JobApplication
-from .serializer import JobPostSerializer, PublicJobPostSerializer, SkillSerializer,JobApplicationSerializer
+from .models import JobPost, Skills, JobApplication, SavedJob
+from .serializer import *
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from auth_app.models import JobSeeker
 from profile_app.models import JobSeekerSkill
+from django.shortcuts import get_object_or_404
 
 class JobPostView(APIView):
     permission_classes = [IsAuthenticated, IsJobProvier]
@@ -296,5 +297,232 @@ class ApplicationStatusView(APIView):
         except JobSeeker.DoesNotExist:
             return Response(
                 {"error": "Job seeker profile not found.", "status": "ERROR"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+class SaveJobView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Save a job for the current user"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            jobpost_id = request.data.get('jobpost_id')
+            
+            if not jobpost_id:
+                return Response(
+                    {"error": "Job post ID is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                jobpost = JobPost.objects.get(id=jobpost_id)
+            except JobPost.DoesNotExist:
+                return Response(
+                    {"error": "Job post not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if already saved
+            saved_job, created = SavedJob.objects.get_or_create(
+                job_seeker=job_seeker,
+                jobpost=jobpost
+            )
+            
+            if created:
+                serializer = SavedJobSerializer(saved_job)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(
+                    {"message": "Job already saved", "saved_job": SavedJobSerializer(saved_job).data},
+                    status=status.HTTP_200_OK
+                )
+                
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class UnsaveJobView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, job_id):
+        """Unsave a job for the current user"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            try:
+                saved_job = SavedJob.objects.get(
+                    job_seeker=job_seeker,
+                    jobpost_id=job_id
+                )
+                saved_job.delete()
+                return Response(
+                    {"message": "Job removed from saved list"},
+                    status=status.HTTP_200_OK
+                )
+            except SavedJob.DoesNotExist:
+                return Response(
+                    {"error": "Job was not saved"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class SavedJobStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, job_id):
+        """Check if a job is saved by the current user"""
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            is_saved = SavedJob.objects.filter(
+                job_seeker=job_seeker,
+                jobpost_id=job_id
+            ).exists()
+            
+            return Response(
+                {"is_saved": is_saved},
+                status=status.HTTP_200_OK
+            )
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found", "is_saved": False},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class JobPostListView(APIView):
+    """
+    API endpoint for listing job posts.
+    Only returns job posts that belong to the authenticated job provider.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            job_provider = JobProvider.objects.get(user=request.user)
+            job_posts = JobPost.objects.filter(
+                job_provider=job_provider,
+                is_deleted=False
+            ).order_by('-created_at')
+            
+            serializer = JobPostListSerializer(job_posts, many=True)
+            return Response(serializer.data)
+        
+        except JobProvider.DoesNotExist:
+            return Response(
+                {"error": "Job provider profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class JobPostDetailForApplicantsView(APIView):
+    """
+    API endpoint for retrieving a specific job post.
+    Only returns the job post if it belongs to the authenticated job provider.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pk):
+        try:
+            job_provider = JobProvider.objects.get(user=request.user)
+            job_post = get_object_or_404(
+                JobPost, 
+                pk=pk, 
+                job_provider=job_provider,
+                is_deleted=False
+            )
+            
+            serializer = JobPostListSerializer(job_post)
+            return Response(serializer.data)
+        
+        except JobProvider.DoesNotExist:
+            return Response(
+                {"error": "Job provider profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class JobPostApplicantsView(APIView):
+    """
+    API endpoint for listing all applicants for a specific job post.
+    Only returns applicants if the job post belongs to the authenticated job provider.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pk):
+        try:
+            job_provider = JobProvider.objects.get(user=request.user)
+            
+            # Get the job post and ensure it belongs to the authenticated job provider
+            job_post = get_object_or_404(
+                JobPost,
+                pk=pk,
+                job_provider=job_provider,
+                is_deleted=False
+            )
+            
+            # Get all applications for this job post
+            applications = JobApplication.objects.filter(jobpost=job_post)
+            
+            serializer = JobApplicationDetailSerializer(applications, many=True)
+            return Response(serializer.data)
+        
+        except JobProvider.DoesNotExist:
+            return Response(
+                {"error": "Job provider profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class JobApplicationStatusUpdateView(APIView):
+    """
+    API endpoint for updating the status of a job application.
+    Only allows updating if the job post belongs to the authenticated job provider.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def patch(self, request, pk):
+        try:
+            job_provider = JobProvider.objects.get(user=request.user)
+            application = get_object_or_404(JobApplication, pk=pk)
+            
+            # Ensure the job post belongs to the authenticated job provider
+            if application.jobpost.job_provider != job_provider:
+                return Response(
+                    {"error": "You do not have permission to update this application."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Only allow updating the status field
+            if 'status' in request.data:
+                # Validate the status value
+                status_value = request.data['status']
+                valid_statuses = [status_choice[0] for status_choice in JobApplication.STATUS_CHOICES]
+                
+                if status_value not in valid_statuses:
+                    return Response(
+                        {"error": f"Invalid status value. Must be one of: {', '.join(valid_statuses)}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                    
+                application.status = status_value
+                application.save()
+                
+                serializer = JobApplicationDetailSerializer(application)
+                return Response(serializer.data)
+            
+            return Response(
+                {"error": "Only 'status' field can be updated."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        except JobProvider.DoesNotExist:
+            return Response(
+                {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )

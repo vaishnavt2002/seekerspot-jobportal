@@ -48,6 +48,41 @@ const jobApi = {
       throw new Error(error.message || 'Failed to search skills');
     }
   },
+  getJobPostsList: async () => {
+    try {
+      const response = await axiosInstance.get('/job-posts-list/');
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch job posts list');
+    }
+  },
+
+  getJobPostDetails: async (id) => {
+    try {
+      const response = await axiosInstance.get(`/job-posts-list/${id}/`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch job post details');
+    }
+  },
+
+  getJobPostApplicants: async (id) => {
+    try {
+      const response = await axiosInstance.get(`/job-posts-list/${id}/applicants/`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch job post applicants');
+    }
+  },
+
+  updateApplicationStatus: async (applicationId, statusData) => {
+    try {
+      const response = await axiosInstance.patch(`/applications/${applicationId}/`, statusData);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to update application status');
+    }
+  },
 };
 
 export default jobApi;

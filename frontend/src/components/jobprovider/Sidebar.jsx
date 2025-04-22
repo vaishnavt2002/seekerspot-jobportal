@@ -14,7 +14,7 @@ const Sidebar = () => {
   const menuItems = [
     { name: "Dashboard", path: "/jobprovider/dashboard" },
     { name: "Job Posts", path: "/jobprovider/job-posts" },
-    { name: "Applicants", path: "/applicants" },
+    { name: "Applicants", path: "/jobprovider/applicants" },
     { name: "Shortlisted Applicants", path: "/shortlisted" },
     { name: "Interviews", path: "/interviews" },
   ];
