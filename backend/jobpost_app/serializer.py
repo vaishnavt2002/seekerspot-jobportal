@@ -2,7 +2,9 @@ from rest_framework import serializers
 from .models import *
 from auth_app.models import User
 from profile_app.models import Education, WorkExperience, JobSeekerSkill
-
+from jobpost_app.models import JobPost
+from interview_app.serializer import InterviewScheduleSerializer
+from interview_app.models import InterviewSchedule
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -207,12 +209,13 @@ class JobApplicationDetailSerializer(serializers.ModelSerializer):
     education = serializers.SerializerMethodField()
     work_experience = serializers.SerializerMethodField()
     skill_match = serializers.SerializerMethodField()
+    interviews = serializers.SerializerMethodField()
     
     class Meta:
         model = JobApplication
         fields = [
             'id', 'jobpost', 'job_seeker', 'status', 'applied_at', 'updated_at',
-            'skills', 'education', 'work_experience', 'skill_match'
+            'skills', 'education', 'work_experience', 'skill_match','interviews'
         ]
     
     def get_skills(self, obj):
@@ -245,3 +248,7 @@ class JobApplicationDetailSerializer(serializers.ModelSerializer):
             "total_skills": total_job_skills,
             "match_percentage": round(match_percentage, 1)
         }
+    def get_interviews(self, obj):
+        """Get all interviews for this application"""
+        interviews = InterviewSchedule.objects.filter(application=obj.id)
+        return InterviewScheduleSerializer(interviews, many=True).data

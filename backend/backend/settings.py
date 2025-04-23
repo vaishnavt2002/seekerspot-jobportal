@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'auth_app',
     'profile_app',
     'jobpost_app',
+    'interview_app'
 ]
 # Rest Framework settings
 REST_FRAMEWORK = {

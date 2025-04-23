@@ -15,7 +15,7 @@ const Sidebar = () => {
     { name: "Dashboard", path: "/jobprovider/dashboard" },
     { name: "Job Posts", path: "/jobprovider/job-posts" },
     { name: "Applicants", path: "/jobprovider/applicants" },
-    { name: "Shortlisted Applicants", path: "/shortlisted" },
+    { name: "Shortlisted Applicants", path: "/jobprovider/shortlisted" },
     { name: "Interviews", path: "/interviews" },
   ];
 

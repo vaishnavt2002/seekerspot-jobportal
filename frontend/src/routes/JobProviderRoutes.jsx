@@ -4,6 +4,7 @@ import JobProviderDashboard from '../pages/jobprovider/Dashboard';
 import ProfilePage from '../pages/jobprovider/ProfilePage';
 import JobPostsPage from '../pages/jobprovider/JobPostsPage';
 import ApplicantsPage from '../pages/jobprovider/ApplicantsPage';
+import ShorlistedPage from '../pages/jobseeker/ShorlistedPage';
 const JobProviderRoutes = [
   {
     path: '/jobprovider',
@@ -38,6 +39,14 @@ const JobProviderRoutes = [
         element: (
           <ProtectedRoute role="job_provider">
             <ApplicantsPage/>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'shortlisted',
+        element: (
+          <ProtectedRoute role="job_provider">
+            <ShorlistedPage/>
           </ProtectedRoute>
         ),
       },

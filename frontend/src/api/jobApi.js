@@ -83,6 +83,55 @@ const jobApi = {
       throw new Error(error.message || 'Failed to update application status');
     }
   },
+  getShortlistedApplicants: async (id) => {
+    try {
+      const response = await axiosInstance.get(`/job-posts-list/${id}/shortlisted/`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch shortlisted applicants');
+    }
+  },
+
+  // Fixed interview API calls to match backend routes
+  createInterviewSchedule: async (interviewData) => {
+    try {
+      const response = await axiosInstance.post('/interviews/', interviewData);
+      return response;
+    } catch (error) {
+      console.error('Interview creation error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to create interview schedule');
+    }
+  },
+
+  updateInterviewSchedule: async (interviewId, interviewData) => {
+    try {
+      const response = await axiosInstance.patch(`/interviews/${interviewId}/`, interviewData);
+      return response;
+    } catch (error) {
+      console.error('Interview update error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to update interview schedule');
+    }
+  },
+
+  cancelInterviewSchedule: async (interviewId) => {
+    try {
+      const response = await axiosInstance.post(`/interviews/${interviewId}/cancel/`);
+      return response;
+    } catch (error) {
+      console.error('Interview cancellation error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to cancel interview schedule');
+    }
+  },
+
+  completeInterviewSchedule: async (interviewId) => {
+    try {
+      const response = await axiosInstance.post(`/interviews/${interviewId}/complete/`);
+      return response;
+    } catch (error) {
+      console.error('Interview completion error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to complete interview schedule');
+    }
+  },
 };
 
 export default jobApi;

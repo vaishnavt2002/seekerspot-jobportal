@@ -24,5 +24,6 @@ urlpatterns = [
     path('api/auth/', include('auth_app.urls')),
     path('api/profile/',include('profile_app.urls')),
     path('api/',include('jobpost_app.urls')),
+    path('api/',include('interview_app.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT )
