@@ -12,23 +12,118 @@ from django.utils import timezone
 from auth_app.models import JobSeeker
 from profile_app.models import JobSeekerSkill
 from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator
 
 class JobPostView(APIView):
-    permission_classes = [IsAuthenticated, IsJobProvier]
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        job_posts = JobPost.objects.filter(job_provider=request.user.job_provider_profile, is_deleted=False)
-        serializer = JobPostSerializer(job_posts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            # Get query parameters with validation
+            try:
+                page = int(request.query_params.get('page', 1))
+                if page < 1:
+                    raise ValueError
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid page number'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                page_size = int(request.query_params.get('page_size', 16))
+                if page_size < 1:
+                    raise ValueError
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid page size'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            search = request.query_params.get('search', '')
+            job_type = request.query_params.get('job_type', '')
+            status_param = request.query_params.get('status', '')
+            domain = request.query_params.get('domain', '')
+            sort = request.query_params.get('sort', '')  # e.g., 'created_at', '-created_at', 'title', '-title'
+
+            # Validate sort parameter
+            valid_sorts = ['', 'created_at', '-created_at', 'title', '-title']
+            if sort not in valid_sorts:
+                return Response(
+                    {'error': 'Invalid sort parameter'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check for job provider profile
+            try:
+                job_provider = request.user.job_provider_profile
+            except AttributeError:
+                return Response(
+                    {'error': 'User is not associated with a job provider profile'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Base queryset
+            job_posts = JobPost.objects.filter(
+                job_provider=job_provider,
+                is_deleted=False
+            )
+
+            # Apply search
+            if search:
+                job_posts = job_posts.filter(
+                    Q(title__icontains=search) |
+                    Q(description__icontains=search) |
+                    Q(location__icontains=search)
+                )
+
+            # Apply filters
+            if job_type:
+                job_posts = job_posts.filter(job_type=job_type)
+            if status_param:
+                job_posts = job_posts.filter(status=status_param)
+            if domain:
+                job_posts = job_posts.filter(domain=domain)
+
+            # Apply sorting
+            if sort:
+                job_posts = job_posts.order_by(sort)
+
+            # Paginate
+            paginator = Paginator(job_posts, page_size)
+            try:
+                paginated_jobs = paginator.page(page)
+            except:
+                return Response(
+                    {'error': 'Page not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            serializer = JobPostSerializer(paginated_jobs, many=True)
+            return Response({
+                'results': serializer.data,
+                'next': None if not paginated_jobs.has_next() else page + 1,
+                'previous': None if not paginated_jobs.has_previous() else page - 1,
+                'count': paginator.count,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'Server error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
-        serializer = JobPostSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save(job_provider=request.user.job_provider_profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        try:
+            serializer = JobPostSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save(job_provider=request.user.job_provider_profile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': f'Server error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 class JobPostDetailView(APIView):
     permission_classes = [IsAuthenticated, IsJobProvier]
     parser_classes = [MultiPartParser, FormParser, JSONParser]

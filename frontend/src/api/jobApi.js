@@ -1,9 +1,10 @@
 import axiosInstance from './axiosInstance';
 
 const jobApi = {
-  getJobPosts: async () => {
+  getJobPosts: async (params = {}) => {
     try {
-      return await axiosInstance.get('/job-posts/');
+      const response = await axiosInstance.get('/job-posts/', { params });
+      return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to fetch job posts');
     }
@@ -11,7 +12,8 @@ const jobApi = {
 
   getJobPost: async (id) => {
     try {
-      return await axiosInstance.get(`/job-posts/${id}/`);
+      const response = await axiosInstance.get(`/job-posts/${id}/`);
+      return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to fetch job post');
     }
@@ -19,7 +21,8 @@ const jobApi = {
 
   createJobPost: async (jobData) => {
     try {
-      return await axiosInstance.post('/job-posts/', jobData);
+      const response = await axiosInstance.post('/job-posts/', jobData);
+      return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to create job post');
     }
@@ -27,7 +30,8 @@ const jobApi = {
 
   updateJobPost: async (id, jobData) => {
     try {
-      return await axiosInstance.put(`/job-posts/${id}/`, jobData);
+      const response = await axiosInstance.put(`/job-posts/${id}/`, jobData);
+      return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to update job post');
     }
@@ -35,11 +39,13 @@ const jobApi = {
 
   deleteJobPost: async (id) => {
     try {
-      return await axiosInstance.delete(`/job-posts/${id}/`);
+      const response = await axiosInstance.delete(`/job-posts/${id}/`);
+      return response;
     } catch (error) {
       throw new Error(error.message || 'Failed to delete job post');
     }
   },
+
   searchSkills: async (query) => {
     try {
       const response = await axiosInstance.get(`/skills/search/?query=${query}`);
@@ -48,6 +54,7 @@ const jobApi = {
       throw new Error(error.message || 'Failed to search skills');
     }
   },
+
   getJobPostsList: async () => {
     try {
       const response = await axiosInstance.get('/job-posts-list/');
@@ -83,6 +90,7 @@ const jobApi = {
       throw new Error(error.message || 'Failed to update application status');
     }
   },
+
   getShortlistedApplicants: async (id) => {
     try {
       const response = await axiosInstance.get(`/job-posts-list/${id}/shortlisted/`);
@@ -92,7 +100,6 @@ const jobApi = {
     }
   },
 
-  // Fixed interview API calls to match backend routes
   createInterviewSchedule: async (interviewData) => {
     try {
       const response = await axiosInstance.post('/interviews/', interviewData);
