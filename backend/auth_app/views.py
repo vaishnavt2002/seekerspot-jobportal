@@ -215,12 +215,13 @@ class ResetPasswordView(APIView):
 
 class LogoutView(APIView):
     def post(self, request):
-        user = request.user if request.user.is_authenticated else None
         refresh_token = request.COOKIES.get('refresh_token')
-
-        if user and refresh_token:
-            cache_key = f"logout_{user.id}"
-            cache.set(cache_key, True, timeout=24 * 60 * 60) 
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception as e:
+                pass
 
         response = Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
         response.delete_cookie('access_token')
