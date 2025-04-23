@@ -175,3 +175,19 @@ class JobSeekerSkillDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except JobSeekerSkill.DoesNotExist:
             return Response({"error": "Skill not found in your profile."}, status=status.HTTP_404_NOT_FOUND)
+        
+class SavedJobPostView(APIView):
+    permission_classes = [IsAuthenticated, IsJobSeeker]
+    def get(self, request):
+        job_seeker = request.user.job_seeker_profile
+        saved_jobs = SavedJob.objects.filter(job_seeker=job_seeker)
+        serializer = SavedJobSerializer(saved_jobs, many = True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    def delete(self, request, job_id):
+        job_seeker = request.user.job_seeker_profile
+        try:
+            saved_job = SavedJob.objects.get(job_seeker=job_seeker, jobpost_id=job_id)
+            saved_job.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except SavedJob.DoesNotExist:
+            return Response({"error": "Saved job not found."}, status=status.HTTP_404_NOT_FOUND)

@@ -1,7 +1,9 @@
+from dataclasses import field
 from os import read
 from rest_framework import serializers
 from .models import *
 from auth_app.models import *
+from jobpost_app.models import SavedJob,JobPost
 
 class WorkExperienceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -164,3 +166,23 @@ class JobSeekerSkillSerializer(serializers.ModelSerializer):
                 instance = JobSeekerSkill.objects.create(job_seeker=job_seeker, skill=skill, **validated_data)
                 instances.append(instance)
             return instances
+        
+class JobPostSerializer(serializers.ModelSerializer):
+    company_name = serializers.SerializerMethodField()
+    class Meta:
+        model = JobPost
+        fields = [
+            'id', 'title', 'description', 'requirements', 'responsibilities',
+            'location', 'job_type', 'employment_type', 'domain', 'experience_level',
+            'min_salary', 'max_salary', 'application_deadline', 'status', 'created_at','company_name'
+        ]
+    def get_company_name(self, obj):
+        return obj.job_provider.company_name if obj.job_provider else None
+        
+class SavedJobSerializer(serializers.ModelSerializer):
+    jobpost = JobPostSerializer(read_only=True)
+    
+    class Meta:
+        model = SavedJob
+        fields = ['id', 'jobpost', 'job_seeker', 'saved_at']
+        

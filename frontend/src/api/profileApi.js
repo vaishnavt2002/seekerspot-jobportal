@@ -178,6 +178,22 @@ const profileApi = {
       throw new Error(error.message || 'Failed to search skills');
     }
   },
+  getSavedJobs: async () => {
+    try {
+      const response = await axiosInstance.get('profile/saved-jobs/');
+      return response;
+    }catch (error){
+      throw new Error(error.message || 'Failed to fetch saved jobs');
+    }
+  },
+  deleteSavedJob: async (jobId) => {
+    try {
+      const response = await axiosInstance.delete(`profile/saved-jobs/${jobId}/`);
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to delete saved job');
+    }
+  }
 };
 
 export default profileApi;

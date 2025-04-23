@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'auth_app',
     'profile_app',
     'jobpost_app',
-    'interview_app'
+    'interview_app',
+    'home_feed'
 ]
 # Rest Framework settings
 REST_FRAMEWORK = {
@@ -141,7 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 

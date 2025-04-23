@@ -12,5 +12,7 @@ urlpatterns = [
     path('skills/search/', SkillSearchView.as_view(), name='skill-search'),
     path('skills/', JobSeekerSkillView.as_view(), name='jobseeker-skills'),
     path('skills/<int:skill_id>/', JobSeekerSkillDetailView.as_view(), name='jobseeker-skill-detail'),
+    path('saved-jobs/', SavedJobPostView.as_view(), name='saved-jobs-list'),
+    path('saved-jobs/<int:job_id>/', SavedJobPostView.as_view(), name='saved-job-detail'),
 ]
 

@@ -1,68 +1,85 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import profileApi from "../../api/profileApi";
+import { useNavigate } from "react-router-dom";
 
-const SavedJobs = ({ savedJobs }) => {
+const SavedJobs = () => {
+  const [savedJobs, setSavedJobs] = useState([]);
+  const navigate = useNavigate();
+
+  const fetchSavedJobs = async () => {
+    try {
+      const response = await profileApi.getSavedJobs();
+      setSavedJobs(response);
+      console.log("saved_jobs", response);
+    } catch (err) {
+      console.error("Error fetching saved jobs:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedJobs();
+  }, []);
+
+  const onDelete = (jobId) => {
+    const deleteSavedJob = async () => {
+      try {
+        await profileApi.deleteSavedJob(jobId);
+        fetchSavedJobs(); // refresh the list
+      } catch (err) {
+        console.error("Error deleting saved job:", err);
+      }
+    };
+    deleteSavedJob();
+  };
+
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl shadow-xl">
-      <h2 className="text-2xl font-bold text-blue-700 mb-6 border-b pb-2">Saved Jobs</h2>
-      <div className="space-y-6">
-        {savedJobs.length > 0 ? (
-          savedJobs.map((job, index) => (
-            <div
+    <div className="bg-white p-6 rounded-2xl shadow-lg">
+      <h2 className="text-2xl font-bold text-blue-600 mb-4">Saved Jobs</h2>
+      {savedJobs.length > 0 ? (
+        <ul className="space-y-4">
+          {savedJobs.map((job, index) => (
+            <li
               key={index}
-              className="bg-white border border-gray-100 rounded-xl p-5 hover:shadow-lg transition duration-200"
+              className="p-4 border rounded-xl hover:shadow-md transition duration-200"
             >
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700">Job Title</label>
-                <input
-                  type="text"
-                  value={job.title}
-                  disabled
-                  className="w-full mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700"
-                />
+              <div
+                className="cursor-pointer"
+                onClick={() => {
+                  navigate(`/job/${job.jobpost.id}/`);
+                }}
+              >
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {job.jobpost.title}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {job.jobpost.company_name}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Deadline:{" "}
+                  <span className="font-medium text-gray-700">
+                    {new Date(job.jobpost.application_deadline).toLocaleString(
+                      "en-IN",
+                      {
+                        dateStyle: "long",
+                        timeStyle: "short",
+                        timeZone: "Asia/Kolkata",
+                      }
+                    )}
+                  </span>
+                </p>
               </div>
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700">Company</label>
-                <input
-                  type="text"
-                  value={job.company}
-                  disabled
-                  className="w-full mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row sm:gap-4 mb-2">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <input
-                    type="text"
-                    value={job.location}
-                    disabled
-                    className="w-full mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Saved Date</label>
-                  <input
-                    type="text"
-                    value={job.savedDate}
-                    disabled
-                    className="w-full mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700"
-                  />
-                </div>
-              </div>
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  value={job.description}
-                  disabled
-                  className="w-full mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700"
-                ></textarea>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-600">No saved jobs to show.</p>
-        )}
-      </div>
+              <button
+                className="mt-3 text-red-600 hover:text-red-800 font-medium hover:underline"
+                onClick={() => onDelete(job.jobpost.id)}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-500">No saved jobs available.</p>
+      )}
     </div>
   );
 };

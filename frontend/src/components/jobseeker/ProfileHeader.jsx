@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import profileApi from '../../api/profileApi';
+import dummyImage from '../../assets/dummy_profile.jpeg';
 
 const ProfileHeader = () => {
   const [userData, setUserData] = useState(null);
@@ -93,13 +94,15 @@ const ProfileHeader = () => {
     ? `${userData.first_name} ${userData.last_name || ''}`.trim()
     : 'User Name';
   const displayEmail = userData?.email || 'user@example.com';
-  const imageUrl =`http://localhost:8000${userData?.profile_picture}`;
-
+  const imageUrl = userData?.profile_picture != null
+  ? `http://localhost:8000${userData.profile_picture}`
+  : null;
+  
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-white shadow rounded-lg">
       <div className="relative">
         <img
-          src={imageUrl}
+          src={imageUrl||dummyImage}
           alt="profile"
           className="w-20 h-20 rounded-full object-cover border-2 border-blue-100"
         />
