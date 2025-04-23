@@ -6,7 +6,10 @@ class Skills(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
     category = models.CharField(max_length=50)
-
+    class Meta:
+        indexes = [
+            models.Index(fields=['category']),
+            ]
     def __str__(self):
         return self.name
 
@@ -59,6 +62,17 @@ class JobPost(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
+    class Meta:
+        indexes = [
+            models.Index(fields=['location']),
+            models.Index(fields=['job_type']),
+            models.Index(fields=['employment_type']),
+            models.Index(fields=['domain']),
+            models.Index(fields=['experience_level']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['is_deleted']),
+        ]
 
     def delete(self, *args, **kwargs):
         self.is_deleted = True
@@ -66,6 +80,7 @@ class JobPost(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.job_provider.company_name}"
+    
     
 
 

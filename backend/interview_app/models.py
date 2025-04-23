@@ -28,6 +28,12 @@ class InterviewSchedule(models.Model):
 
     class Meta:
         ordering = ['interview_date', 'interview_time']
+        indexes = [
+            models.Index(fields=['interview_date', 'interview_time']),
+            models.Index(fields=['status']),
+            models.Index(fields=['interview_type']),
+            models.Index(fields=['created_at']),
+        ]
 
     def __str__(self):
         return f"{self.interview_type} Interview for {self.application.job_seeker.user.username} on {self.interview_date} at {self.interview_time} (Meeting ID: {self.meeting_id})"
