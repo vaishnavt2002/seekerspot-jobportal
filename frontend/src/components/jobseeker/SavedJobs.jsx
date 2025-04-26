@@ -24,7 +24,7 @@ const SavedJobs = () => {
     const deleteSavedJob = async () => {
       try {
         await profileApi.deleteSavedJob(jobId);
-        fetchSavedJobs(); // refresh the list
+        fetchSavedJobs(); 
       } catch (err) {
         console.error("Error deleting saved job:", err);
       }

@@ -9,8 +9,8 @@ const ApplicantDetails = ({ applicant }) => {
         <div className="space-y-2">
           <h3 className="font-semibold text-lg">Personal Information</h3>
           <p><strong>Experience:</strong> {applicant.job_seeker.experience} years</p>
-          <p><strong>Expected Salary:</strong> ${applicant.job_seeker.expected_salary}</p>
-          <p><strong>Current Salary:</strong> {applicant.job_seeker.current_salary ? `$${applicant.job_seeker.current_salary}` : 'Not provided'}</p>
+          <p><strong>Expected Salary:</strong> ₹{applicant.job_seeker.expected_salary}</p>
+          <p><strong>Current Salary:</strong> {applicant.job_seeker.current_salary ? `₹${applicant.job_seeker.current_salary}` : 'Not provided'}</p>
           <p><strong>Availability:</strong> {applicant.job_seeker.is_available ? 'Available' : 'Not Available'}</p>
         </div>
         <div className="space-y-2">
@@ -119,26 +119,24 @@ const InterviewScheduleForm = ({ applicationId, onSchedule, onCancel, existingIn
       onSchedule(response);
     } catch (err) {
       console.error('Error in interview operation:', err);
-      setError(err.message || 'Failed to schedule interview. Please try again.');
+      setError(err.response?.data?.error || 'Failed to schedule interview. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (existingInterview) {
       setIsSubmitting(true);
-      jobApi.cancelInterviewSchedule(existingInterview.id)
-        .then(response => {
-          onSchedule(response);
-        })
-        .catch(err => {
-          console.error('Error cancelling interview:', err);
-          setError(err.message || 'Failed to cancel interview. Please try again.');
-        })
-        .finally(() => {
-          setIsSubmitting(false);
-        });
+      try {
+        const response = await jobApi.cancelInterviewSchedule(existingInterview.id);
+        onSchedule(response);
+      } catch (err) {
+        console.error('Error cancelling interview:', err);
+        setError(err.response?.data?.error || 'Failed to cancel interview. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       onCancel();
     }
@@ -182,7 +180,7 @@ const InterviewScheduleForm = ({ applicationId, onSchedule, onCancel, existingIn
           >
             <option value="AUDIO_ONLY">Audio Only</option>
             <option value="VIDEO_ONLY">Video Only</option>
-            <option value="AUDIO_AND_VIDEO">Audio and Video</option>
+            {/*<option value="AUDIO_AND_VIDEO">Audio and Video</option>*/}
           </select>
         </div>
         <div>
@@ -269,7 +267,6 @@ export default function ShortlistedApplicants() {
   };
 
   const handleScheduleInterview = (applicantId, e) => {
-    // Stop event propagation to prevent row expansion
     if (e) {
       e.stopPropagation();
     }
@@ -277,18 +274,14 @@ export default function ShortlistedApplicants() {
   };
 
   const handleInterviewUpdateComplete = (updatedInterview) => {
-    // Find the applicant with the matching application ID and update their interviews
     const updatedApplicants = applicants.map(applicant => {
       if (applicant.id === updatedInterview.application) {
-        // First, filter out the old version of this interview if it exists
         const filteredInterviews = applicant.interviews.filter(
           interview => interview.id !== updatedInterview.id
         );
-        
-        // Then add the updated interview
         return {
           ...applicant,
-          interviews: [...filteredInterviews, updatedInterview]
+          interviews: [updatedInterview, ...filteredInterviews]
         };
       }
       return applicant;
@@ -299,15 +292,12 @@ export default function ShortlistedApplicants() {
   };
 
   const handleCompleteInterview = async (interviewId, e) => {
-    // Stop event propagation to prevent row expansion
     if (e) {
       e.stopPropagation();
     }
     
     try {
       const response = await jobApi.completeInterviewSchedule(interviewId);
-      
-      // Update the interview status locally
       const updatedApplicants = applicants.map(applicant => {
         const updatedInterviews = applicant.interviews.map(interview => {
           if (interview.id === interviewId) {
@@ -319,7 +309,6 @@ export default function ShortlistedApplicants() {
           }
           return interview;
         });
-        
         return {
           ...applicant,
           interviews: updatedInterviews
@@ -328,7 +317,7 @@ export default function ShortlistedApplicants() {
       
       setApplicants(updatedApplicants);
     } catch (err) {
-      setError(err.message || 'Failed to mark interview as completed. Please try again.');
+      setError(err.response?.data?.error || 'Failed to mark interview as completed. Please try again.');
     }
   };
 
@@ -356,19 +345,16 @@ export default function ShortlistedApplicants() {
         return 'Unknown';
     }
   };
-  
-  // Helper to find the active interview for an applicant
+
   const getActiveInterview = (interviews) => {
     if (!interviews || !Array.isArray(interviews)) return null;
     
-    // First try to find a scheduled or rescheduled interview
-    const scheduledInterview = interviews.find(
+    const activeInterview = interviews.find(
       interview => interview.status === 'SCHEDULED' || interview.status === 'RESCHEDULED'
     );
     
-    if (scheduledInterview) return scheduledInterview;
+    if (activeInterview) return activeInterview;
     
-    // If no active interview, return the most recent one by created_at
     return interviews.length > 0 
       ? [...interviews].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
       : null;
@@ -433,6 +419,11 @@ export default function ShortlistedApplicants() {
             <tbody>
               {applicants.map((applicant) => {
                 const activeInterview = getActiveInterview(applicant.interviews);
+                const hasActiveInterview = activeInterview && (
+                  activeInterview.status === 'SCHEDULED' || 
+                  activeInterview.status === 'RESCHEDULED'
+                );
+                const isCompleted = activeInterview && activeInterview.status === 'COMPLETED';
                 
                 return (
                   <React.Fragment key={applicant.id}>
@@ -443,7 +434,7 @@ export default function ShortlistedApplicants() {
                       <td className="px-4 py-2">{applicant.job_seeker.user.first_name} {applicant.job_seeker.user.last_name}</td>
                       <td className="px-4 py-2">{applicant.job_seeker.user.email}</td>
                       <td className="px-4 py-2">{applicant.job_seeker.experience} yrs</td>
-                      <td className="px-4 py-2">${applicant.job_seeker.expected_salary}</td>
+                      <td className="px-4 py-2">₹{applicant.job_seeker.expected_salary}</td>
                       <td className="px-4 py-2">
                         {activeInterview ? (
                           <div>
@@ -475,7 +466,7 @@ export default function ShortlistedApplicants() {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex space-x-2">
-                          {(!activeInterview || activeInterview.status === 'CANCELLED' || activeInterview.status === 'COMPLETED') && (
+                          {!hasActiveInterview && !isCompleted && (
                             <button
                               onClick={(e) => handleScheduleInterview(applicant.id, e)}
                               className="text-blue-600 hover:underline"
@@ -483,7 +474,7 @@ export default function ShortlistedApplicants() {
                               Schedule Interview
                             </button>
                           )}
-                          {activeInterview && (activeInterview.status === 'SCHEDULED' || activeInterview.status === 'RESCHEDULED') && (
+                          {hasActiveInterview && (
                             <>
                               <button
                                 onClick={(e) => handleScheduleInterview(applicant.id, e)}
@@ -510,13 +501,13 @@ export default function ShortlistedApplicants() {
                       </tr>
                     )}
                     {schedulingApplicantId === applicant.id && (
-                      <tr className="bg-gray-50">
+                      <tr className=" unnoticedbg-gray-50">
                         <td colSpan="6" className="px-0 py-0">
                           <InterviewScheduleForm
                             applicationId={applicant.id}
                             onSchedule={handleInterviewUpdateComplete}
                             onCancel={() => setSchedulingApplicantId(null)}
-                            existingInterview={activeInterview && (activeInterview.status === 'SCHEDULED' || activeInterview.status === 'RESCHEDULED') ? activeInterview : null}
+                            existingInterview={hasActiveInterview ? activeInterview : null}
                           />
                         </td>
                       </tr>

@@ -1,6 +1,4 @@
 from django.shortcuts import render
-
-# Create your views here.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -12,11 +10,10 @@ from jobpost_app.serializer import JobApplicationDetailSerializer
 from jobpost_app.models import JobPost
 from auth_app.models import JobProvider
 from django.utils import timezone
+import logging
+logger = logging.getLogger(__name__)
+
 class ShortlistedApplicantsView(APIView):
-    """
-    API endpoint for listing shortlisted applicants for a specific job post.
-    Only returns applicants if the job post belongs to the authenticated job provider.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
@@ -42,10 +39,7 @@ class ShortlistedApplicantsView(APIView):
             )
 
 class InterviewScheduleCreateView(APIView):
-    """
-    API endpoint for creating an interview schedule for a job application.
-    Only allows scheduling if the job post belongs to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -79,10 +73,7 @@ class InterviewScheduleCreateView(APIView):
             )
 
 class InterviewScheduleUpdateView(APIView):
-    """
-    API endpoint for updating an interview schedule.
-    Only allows updates if the job post belongs to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -110,10 +101,7 @@ class InterviewScheduleUpdateView(APIView):
             )
 
 class InterviewScheduleCancelView(APIView):
-    """
-    API endpoint for cancelling an interview schedule.
-    Only allows cancellation if the job post belongs to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -145,10 +133,6 @@ class InterviewScheduleCancelView(APIView):
             )
 
 class InterviewScheduleCompleteView(APIView):
-    """
-    API endpoint for marking an interview as completed.
-    Only allows completion if the job post belongs to the authenticated job provider.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):

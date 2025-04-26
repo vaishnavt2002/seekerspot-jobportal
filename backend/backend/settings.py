@@ -51,7 +51,9 @@ INSTALLED_APPS = [
     'profile_app',
     'jobpost_app',
     'interview_app',
-    'home_feed'
+    'home_feed',
+    'channels',
+    'chat_app',
 ]
 # Rest Framework settings
 REST_FRAMEWORK = {
@@ -188,3 +190,25 @@ CACHES = {
         'LOCATION': 'unique-snowflake',  
     }
 }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'debug.log',
+        },
+    },
+
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+

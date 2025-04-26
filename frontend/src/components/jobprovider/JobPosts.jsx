@@ -704,7 +704,7 @@ const JobPosts = () => {
   const observer = useRef();
   const lastJobElementRef = useRef();
 
-  // Debounce search query
+
   const debouncedSetSearchQuery = useCallback(
     debounce((value) => {
       setSearchQuery(value);
@@ -712,7 +712,7 @@ const JobPosts = () => {
     []
   );
 
-  // Debounce skill search
+
   const debouncedSearchSkills = useCallback(
     debounce(async (query) => {
       if (query.length < 2) {
@@ -734,7 +734,7 @@ const JobPosts = () => {
     []
   );
 
-  // Memoize filter parameters
+
   const filterParams = useMemo(() => {
     const params = {
       page,
@@ -796,7 +796,7 @@ const JobPosts = () => {
     [hasMore, isLoading]
   );
 
-  // Infinite scroll observer
+
   useEffect(() => {
     if (!lastJobElementRef.current || !hasMore || isLoading) return;
     observer.current = new IntersectionObserver(

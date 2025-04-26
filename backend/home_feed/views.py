@@ -11,13 +11,10 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 class HomeStatsView(APIView):
-    """View to get home page statistics"""
     permission_classes = [AllowAny]
     
     def get(self, request):
-        """Get counts for jobs, companies, candidates and new jobs"""
         try:
-            # Get counts
             live_jobs_count = JobPost.objects.filter(
                 status='PUBLISHED', 
                 is_deleted=False,
@@ -27,7 +24,6 @@ class HomeStatsView(APIView):
             companies_count = JobProvider.objects.filter(is_verified=False).count()
             candidates_count = JobSeeker.objects.all().count()
             
-            # New jobs in the last 7 days
             seven_days_ago = timezone.now() - timedelta(days=7)
             new_jobs_count = JobPost.objects.filter(
                 status='PUBLISHED',
@@ -89,7 +85,6 @@ class PopularJobsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def _get_time_ago(self, created_date):
-        """Helper function to format time ago"""
         now = timezone.now()
         diff = now - created_date
         
@@ -115,13 +110,10 @@ class PopularJobsView(APIView):
 
 
 class FeaturedJobsView(APIView):
-    """View to get featured jobs based on job seeker skills"""
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Get jobs that match the logged-in job seeker's skills"""
         try:
-            # Try to get the job seeker
             try:
                 job_seeker = JobSeeker.objects.get(user=request.user)
             except JobSeeker.DoesNotExist:
@@ -129,19 +121,16 @@ class FeaturedJobsView(APIView):
                     'error': 'JobSeeker profile not found'
                 }, status=status.HTTP_404_NOT_FOUND)
             
-            # Get job seeker's skills
             job_seeker_skills = JobSeekerSkill.objects.filter(job_seeker=job_seeker)
             skill_ids = [js_skill.skill.id for js_skill in job_seeker_skills]
             
             if not skill_ids:
-                # If no skills found, return recent jobs
                 featured_jobs = JobPost.objects.filter(
                     status='PUBLISHED', 
                     is_deleted=False,
                     application_deadline__gte=timezone.now()
                 ).order_by('-created_at')[:6]
             else:
-                # Find jobs that match the user's skills
                 featured_jobs = JobPost.objects.filter(
                     status='PUBLISHED', 
                     is_deleted=False,
@@ -149,7 +138,6 @@ class FeaturedJobsView(APIView):
                     skills__id__in=skill_ids
                 ).distinct().order_by('-created_at')[:6]
             
-            # Serialize the data
             jobs_data = []
             for job in featured_jobs:
                 jobs_data.append({

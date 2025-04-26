@@ -13,6 +13,8 @@ from auth_app.models import JobSeeker
 from profile_app.models import JobSeekerSkill
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
+import logging
+logger = logging.getLogger(__name__)
 
 class JobPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -20,7 +22,6 @@ class JobPostView(APIView):
 
     def get(self, request):
         try:
-            # Get query parameters with validation
             try:
                 page = int(request.query_params.get('page', 1))
                 if page < 1:
@@ -43,9 +44,8 @@ class JobPostView(APIView):
             job_type = request.query_params.get('job_type', '')
             status_param = request.query_params.get('status', '')
             domain = request.query_params.get('domain', '')
-            sort = request.query_params.get('sort', '')  # e.g., 'created_at', '-created_at', 'title', '-title'
+            sort = request.query_params.get('sort', '')
 
-            # Validate sort parameter
             valid_sorts = ['', 'created_at', '-created_at', 'title', '-title']
             if sort not in valid_sorts:
                 return Response(
@@ -53,7 +53,6 @@ class JobPostView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check for job provider profile
             try:
                 job_provider = request.user.job_provider_profile
             except AttributeError:
@@ -62,13 +61,11 @@ class JobPostView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # Base queryset
             job_posts = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
             )
 
-            # Apply search
             if search:
                 job_posts = job_posts.filter(
                     Q(title__icontains=search) |
@@ -76,7 +73,6 @@ class JobPostView(APIView):
                     Q(location__icontains=search)
                 )
 
-            # Apply filters
             if job_type:
                 job_posts = job_posts.filter(job_type=job_type)
             if status_param:
@@ -84,11 +80,9 @@ class JobPostView(APIView):
             if domain:
                 job_posts = job_posts.filter(domain=domain)
 
-            # Apply sorting
             if sort:
                 job_posts = job_posts.order_by(sort)
 
-            # Paginate
             paginator = Paginator(job_posts, page_size)
             try:
                 paginated_jobs = paginator.page(page)
@@ -232,34 +226,26 @@ class JobSeekerSkillsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Get all skills of the logged-in job seeker"""
         try:
             job_seeker = JobSeeker.objects.get(user=request.user)
-            # Get all skills associated with this job seeker
             job_seeker_skills = JobSeekerSkill.objects.filter(job_seeker=job_seeker)
             skills = [js_skill.skill for js_skill in job_seeker_skills]
             
             serializer = SkillSerializer(skills, many=True)
             
-            # Log for debugging
             print(f"User {request.user.username} has {len(skills)} skills")
-            print(f"Skills: {', '.join([skill.name for skill in skills])}")
+
             
             return Response(serializer.data, status=status.HTTP_200_OK)
         except JobSeeker.DoesNotExist:
-            # Return empty list if job seeker doesn't exist
-            print(f"JobSeeker profile not found for user {request.user.username}")
             return Response([], status=status.HTTP_200_OK)
         except Exception as e:
-            # Log any other exception
-            print(f"Error in JobSeekerSkillsView: {str(e)}")
             return Response([], status=status.HTTP_200_OK)
 
 class AddSkillsToProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        """Add skills to job seeker profile"""
         try:
             job_seeker = JobSeeker.objects.get(user=request.user)
             skill_ids = request.data.get('skill_ids', [])
@@ -283,7 +269,6 @@ class AddSkillsToProfileView(APIView):
                 except Skills.DoesNotExist:
                     continue
             
-            # Return all updated skills
             all_skills = [js_skill.skill for js_skill in JobSeekerSkill.objects.filter(job_seeker=job_seeker)]
             serializer = SkillSerializer(all_skills, many=True)
             
@@ -301,8 +286,13 @@ class ApplyForJobView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        """Apply for a job"""
         try:
+            if not request.user.first_name or not request.user.last_name:
+                return Response(
+                    {"error": "First name and last name are required to apply for a job."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             job_seeker = JobSeeker.objects.get(user=request.user)
             job_id = request.data.get('jobpost_id')
             
@@ -312,7 +302,6 @@ class ApplyForJobView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Check if job exists and is valid
             try:
                 job = JobPost.objects.get(
                     id=job_id,
@@ -326,14 +315,12 @@ class ApplyForJobView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Check if already applied
             if JobApplication.objects.filter(jobpost=job, job_seeker=job_seeker).exists():
                 return Response(
                     {"error": "You have already applied for this job."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Create application
             application = JobApplication.objects.create(
                 jobpost=job,
                 job_seeker=job_seeker,
@@ -366,7 +353,7 @@ class ApplyForJobView(APIView):
         
         except JobSeeker.DoesNotExist:
             return Response(
-                {"error": "Job seeker profile not found. Please complete your profile before applying."},
+                {"error": "Job seeker profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
 class ApplicationStatusView(APIView):
@@ -384,7 +371,6 @@ class ApplicationStatusView(APIView):
                 serializer = JobApplicationSerializer(application)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except JobApplication.DoesNotExist:
-                # Return a properly formatted response
                 return Response(
                     {"status": "NOT_APPLIED", "message": "You have not applied for this job yet."},
                     status=status.HTTP_200_OK
@@ -399,7 +385,6 @@ class SaveJobView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        """Save a job for the current user"""
         try:
             job_seeker = JobSeeker.objects.get(user=request.user)
             jobpost_id = request.data.get('jobpost_id')
@@ -471,7 +456,6 @@ class SavedJobStatusView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request, job_id):
-        """Check if a job is saved by the current user"""
         try:
             job_seeker = JobSeeker.objects.get(user=request.user)
             is_saved = SavedJob.objects.filter(
@@ -491,10 +475,7 @@ class SavedJobStatusView(APIView):
 
 
 class JobPostListView(APIView):
-    """
-    API endpoint for listing job posts.
-    Only returns job posts that belong to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
@@ -516,13 +497,11 @@ class JobPostListView(APIView):
 
 
 class JobPostDetailForApplicantsView(APIView):
-    """
-    API endpoint for retrieving a specific job post.
-    Only returns the job post if it belongs to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
     
     def get(self, request, pk):
+        logger.info("This is an info message from my_view.")
         try:
             job_provider = JobProvider.objects.get(user=request.user)
             job_post = get_object_or_404(
@@ -543,17 +522,13 @@ class JobPostDetailForApplicantsView(APIView):
 
 
 class JobPostApplicantsView(APIView):
-    """
-    API endpoint for listing all applicants for a specific job post.
-    Only returns applicants if the job post belongs to the authenticated job provider.
-    """
+
     permission_classes = [IsAuthenticated]
     
     def get(self, request, pk):
         try:
             job_provider = JobProvider.objects.get(user=request.user)
             
-            # Get the job post and ensure it belongs to the authenticated job provider
             job_post = get_object_or_404(
                 JobPost,
                 pk=pk,
@@ -561,7 +536,6 @@ class JobPostApplicantsView(APIView):
                 is_deleted=False
             )
             
-            # Get all applications for this job post
             applications = JobApplication.objects.filter(jobpost=job_post)
             
             serializer = JobApplicationDetailSerializer(applications, many=True)
@@ -575,10 +549,6 @@ class JobPostApplicantsView(APIView):
 
 
 class JobApplicationStatusUpdateView(APIView):
-    """
-    API endpoint for updating the status of a job application.
-    Only allows updating if the job post belongs to the authenticated job provider.
-    """
     permission_classes = [IsAuthenticated]
     
     def patch(self, request, pk):
@@ -586,16 +556,13 @@ class JobApplicationStatusUpdateView(APIView):
             job_provider = JobProvider.objects.get(user=request.user)
             application = get_object_or_404(JobApplication, pk=pk)
             
-            # Ensure the job post belongs to the authenticated job provider
             if application.jobpost.job_provider != job_provider:
                 return Response(
                     {"error": "You do not have permission to update this application."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Only allow updating the status field
             if 'status' in request.data:
-                # Validate the status value
                 status_value = request.data['status']
                 valid_statuses = [status_choice[0] for status_choice in JobApplication.STATUS_CHOICES]
                 

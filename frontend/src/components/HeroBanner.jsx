@@ -3,7 +3,7 @@ import { Briefcase, Building2, Users, FilePlus } from 'lucide-react';
 import womanImg from '../assets/women.jpg';
 
 export default function HeroBanner({ stats }) {
-  // Format numbers with commas
+  
   const formatNumber = (num) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
@@ -15,7 +15,7 @@ export default function HeroBanner({ stats }) {
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
             Discover more <br /> than <br />
             <span className="text-blue-600 relative inline-block">
-              {formatNumber(stats.live_jobs)}+ Jobs
+              10000+ Jobs
             </span>
           </h1>
           <p className="mt-4 text-gray-600 text-lg">

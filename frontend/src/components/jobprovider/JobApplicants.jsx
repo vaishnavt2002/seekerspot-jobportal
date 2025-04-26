@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import jobApi from '../../api/jobApi'; // Import the updated jobApi
+import jobApi from '../../api/jobApi';
 
 // Sub-component to display applicant details
 const ApplicantDetails = ({ applicant }) => {
@@ -10,8 +10,8 @@ const ApplicantDetails = ({ applicant }) => {
         <div className="space-y-2">
           <h3 className="font-semibold text-lg">Personal Information</h3>
           <p><strong>Experience:</strong> {applicant.job_seeker.experience} years</p>
-          <p><strong>Expected Salary:</strong> ${applicant.job_seeker.expected_salary}</p>
-          <p><strong>Current Salary:</strong> {applicant.job_seeker.current_salary ? `$${applicant.job_seeker.current_salary}` : 'Not provided'}</p>
+          <p><strong>Expected Salary:</strong> ₹{applicant.job_seeker.expected_salary}</p>
+          <p><strong>Current Salary:</strong> {applicant.job_seeker.current_salary ? `₹${applicant.job_seeker.current_salary}` : 'Not provided'}</p>
           <p><strong>Availability:</strong> {applicant.job_seeker.is_available ? 'Available' : 'Not Available'}</p>
         </div>
 
@@ -134,12 +134,11 @@ export default function JobApplicants() {
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('All'); // State for status filter
 
-  // Fetch job posts on component mount
   useEffect(() => {
     fetchJobPosts();
   }, []);
 
-  // Fetch applicants when a job is selected
+
   useEffect(() => {
     if (selectedJobId) {
       fetchApplicants(selectedJobId);
@@ -152,7 +151,6 @@ export default function JobApplicants() {
     try {
       setLoading(true);
       const response = await jobApi.getJobPostsList();
-      // Filter for published and non-deleted jobs
       const filteredJobs = response.filter(job => job.status === 'PUBLISHED' && !job.is_deleted);
       setJobPosts(filteredJobs);
       setLoading(false);
@@ -183,7 +181,6 @@ export default function JobApplicants() {
   const updateApplicationStatus = async (applicationId, newStatus) => {
     try {
       await jobApi.updateApplicationStatus(applicationId, { status: newStatus });
-      // Update local state to reflect the change
       setApplicants(applicants.map(app =>
         app.id === applicationId ? { ...app, status: newStatus } : app
       ));
@@ -202,7 +199,6 @@ export default function JobApplicants() {
     });
   };
 
-  // Function to render action buttons based on current status
   const renderActionButtons = (applicant) => {
     const { id, status } = applicant;
 
@@ -274,7 +270,7 @@ export default function JobApplicants() {
             </option>
             {jobPosts.map((job) => (
               <option key={job.id} value={job.id}>
-                {job.title}
+                {job.title}--{job.job_type}
               </option>
             ))}
           </select>
@@ -333,7 +329,7 @@ export default function JobApplicants() {
                     <td className="px-4 py-2">{applicant.job_seeker.user.first_name} {applicant.job_seeker.user.last_name}</td>
                     <td className="px-4 py-2">{applicant.job_seeker.user.email}</td>
                     <td className="px-4 py-2">{applicant.job_seeker.experience} yrs</td>
-                    <td className="px-4 py-2">${applicant.job_seeker.expected_salary}</td>
+                    <td className="px-4 py-2">₹{applicant.job_seeker.expected_salary}</td>
                     <td className="px-4 py-2">{formatDate(applicant.applied_at)}</td>
                     <td className="px-4 py-2">
                       <StatusBadge status={applicant.status} />

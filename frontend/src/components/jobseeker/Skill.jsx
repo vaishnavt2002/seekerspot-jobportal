@@ -7,12 +7,11 @@ const Skill = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [skillSearch, setSkillSearch] = useState('');
   const [skillSuggestions, setSkillSuggestions] = useState([]);
-  const [selectedSkills, setSelectedSkills] = useState([]); // Changed to array for multiple selection
+  const [selectedSkills, setSelectedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Fetch skills on mount
   useEffect(() => {
     fetchSkills();
   }, []);
@@ -84,7 +83,6 @@ const Skill = () => {
 
     setLoading(true);
     try {
-      // Use the bulk addition endpoint with skill_ids
       const skillIds = selectedSkills.map(skill => skill.id);
       await profileApi.addJobSeekerSkills({ skill_ids: skillIds });
       

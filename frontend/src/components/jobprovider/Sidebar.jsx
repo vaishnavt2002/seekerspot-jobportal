@@ -34,7 +34,6 @@ const Sidebar = () => {
     <>
       {/* Mobile Top Bar */}
       <div className="md:hidden flex justify-between items-center bg-white p-4 shadow-md">
-        
         <button
           className="text-gray-600 text-xl"
           onClick={() => setIsOpen(!isOpen)}
@@ -45,8 +44,9 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <div
-        className={`bg-white shadow-lg p-6 h-screen w-64 flex-col justify-between fixed z-50 top-0 left-0 transform transition-transform duration-300 ease-in-out 
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:relative md:flex`}
+        className={`bg-white shadow-lg p-6 h-screen w-64 flex-col justify-between z-50 top-0 left-0 transform transition-transform duration-300 ease-in-out 
+        ${isOpen ? "translate-x-0" : "-translate-x-full"} 
+        md:translate-x-0 md:fixed md:flex`}
       >
         <div>
           <div className="hidden md:flex items-center my-10">
@@ -99,6 +99,9 @@ const Sidebar = () => {
           Company Profile
         </NavLink>
       </div>
+
+      {/* Placeholder for sidebar space on medium and larger screens */}
+      <div className="hidden md:block w-64 flex-shrink-0" />
 
       {/* Overlay for mobile */}
       {isOpen && (
