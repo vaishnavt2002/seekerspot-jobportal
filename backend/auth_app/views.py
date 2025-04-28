@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from auth_app.models import JobProvider, JobSeeker, User
 from auth_app.serializer import *
 from rest_framework import status
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
@@ -26,6 +26,7 @@ class LoginView(APIView):
         if user:
             if not user.is_verified:
                 return Response({'error': 'Verification failed. Sign up again'}, status=status.HTTP_403_FORBIDDEN)
+            login(request, user)
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
