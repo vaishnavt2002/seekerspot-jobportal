@@ -18,7 +18,6 @@ class CommunityMemberSerializer(serializers.ModelSerializer):
 
 class CommunityMessageSerializer(serializers.ModelSerializer):
     sender = serializers.SlugRelatedField(slug_field='username', read_only=True)
-    sender_id = serializers.IntegerField(write_only=True, required=False)
     
     class Meta:
         model = CommunityMessage

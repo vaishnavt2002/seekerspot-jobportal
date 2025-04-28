@@ -34,7 +34,7 @@ export default function Navbar() {
       <div className="hidden md:flex gap-6 items-center text-sm text-gray-700">
         <Link to="/find-jobs" className="hover:text-blue-600">Find Jobs</Link>
         <Link to="/my-jobs" className="hover:text-blue-600">My Jobs</Link>
-        <Link to="/community" className="hover:text-blue-600">Community</Link>
+        <Link to="/communities" className="hover:text-blue-600">Community</Link>
         {isAuthenticated ?<div className="hover:text-blue-600" onClick={handleLogout}>Logout</div>:<><Link to="/login" className="hover:text-blue-600">Login</Link><Link to="/signup" className="hover:text-blue-600">Sign Up</Link></>}
         
         {isAuthenticated&&<Link to='/profile'><div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div></Link>}

@@ -6,39 +6,51 @@ class WebSocketService {
       this.onMessageCallback = null;
       this.reconnectAttempts = 0;
       this.maxReconnectAttempts = 5;
-      this.reconnectDelay = 2000;
+      this.reconnectDelay = 5000; // 5 seconds
+      this.isConnecting = false; // Prevent duplicate connections
+      this.pendingMessages = []; // Store messages that failed to send
     }
   
-    async connect(communityId) {
-      console.log('Attempting to connect WebSocket for community:', communityId);
-      if (!communityId) {
-        console.error('Cannot connect: Community ID is required');
+    async connect() {
+      if (this.isConnecting || (this.socket && this.socket.readyState === WebSocket.OPEN)) {
+        console.log('WebSocket already connecting or connected, skipping connect');
         return;
       }
+      
+      this.isConnecting = true;
+      console.log('Attempting to connect WebSocket');
       
       this.disconnect();
       
       try {
-        // Make a request to a simple endpoint to ensure cookies are set
-        // This helps maintain session authentication
-        await axios.get(`${import.meta.env.VITE_API_URL}/community/communities/${communityId}/`, {
+        // Make a request to ensure cookies are set
+        await axios.get(`${import.meta.env.VITE_API_URL}/community/communities/`, {
           withCredentials: true
         });
         
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = import.meta.env.VITE_WS_HOST || window.location.host;
-        
-        // Ensure communityId is treated as string
-        const wsUrl = `${protocol}//${host}/ws/community/${communityId}/`;
+        const wsUrl = `${protocol}//${host}/ws/community/`;
         
         console.log('WebSocket URL:', wsUrl);
         
-        // Using cookie credentials with WebSocket
         this.socket = new WebSocket(wsUrl);
     
         this.socket.onopen = () => {
-          console.log(`WebSocket connected to community: ${communityId}`);
+          console.log('WebSocket connected');
           this.reconnectAttempts = 0;
+          this.isConnecting = false;
+          
+          // Try to send any pending messages
+          if (this.pendingMessages.length > 0) {
+            console.log(`Attempting to send ${this.pendingMessages.length} pending messages`);
+            [...this.pendingMessages].forEach(message => {
+              if (this.sendMessage(message)) {
+                // Remove from pending if sent successfully
+                this.pendingMessages = this.pendingMessages.filter(m => m !== message);
+              }
+            });
+          }
         };
     
         this.socket.onmessage = (event) => {
@@ -54,38 +66,44 @@ class WebSocketService {
         };
     
         this.socket.onclose = (event) => {
-          console.error(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+          console.error(`WebSocket disconnected: code=${event.code}, reason=${event.reason}`);
+          this.isConnecting = false;
           if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay = this.reconnectDelay * this.reconnectAttempts;
             console.log(`Attempting to reconnect in ${delay/1000} seconds...`);
-            setTimeout(() => this.connect(communityId), delay);
+            setTimeout(() => this.connect(), delay);
+          } else {
+            console.log('Max reconnection attempts reached or normal closure');
           }
         };
     
         this.socket.onerror = (error) => {
           console.error('WebSocket error:', error);
+          this.isConnecting = false;
         };
       } catch (error) {
         console.error('Failed to prepare WebSocket connection:', error);
+        this.isConnecting = false;
       }
     }
   
-    sendMessage(message, attachment = null) {
-      console.log('Sending message:', message, 'Attachment:', attachment);
+    sendMessage(data) {
+      console.log('Sending message:', data);
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         console.error('Cannot send message: WebSocket not connected');
+        // Store message to send later
+        this.pendingMessages.push(data);
         return false;
       }
   
       try {
-        this.socket.send(JSON.stringify({
-          message: message,
-          attachment: attachment
-        }));
+        this.socket.send(JSON.stringify(data));
         return true;
       } catch (error) {
         console.error('Error sending message:', error);
+        // Store message to try again
+        this.pendingMessages.push(data);
         return false;
       }
     }
@@ -100,9 +118,11 @@ class WebSocketService {
       if (this.socket) {
         if (this.socket.readyState === WebSocket.OPEN ||
             this.socket.readyState === WebSocket.CONNECTING) {
+          console.log('Disconnecting WebSocket');
           this.socket.close(1000, 'Normal closure');
         }
         this.socket = null;
+        this.isConnecting = false;
       }
     }
   
@@ -116,6 +136,6 @@ class WebSocketService {
         default: return 'UNKNOWN';
       }
     }
-  }
+}
   
-  export default new WebSocketService();
+export default new WebSocketService();

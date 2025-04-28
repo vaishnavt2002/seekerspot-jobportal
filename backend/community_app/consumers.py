@@ -3,176 +3,175 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Community, CommunityMessage, CommunityMember
 from django.contrib.auth import get_user_model
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
 class CommunityChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.community_name = self.scope['url_route']['kwargs']['community_name']
-        print(f"WebSocket attempting to connect: community_name={self.community_name}")
-        self.community_group_name = f'community_{self.community_name}'
+        self.user = self.scope.get('user')
+        logger.info("WebSocket attempting to connect: user=%s", self.user)
         
-        # Debug scope and user
-        print("Scope:", self.scope)
-        print("User from scope:", self.scope.get('user'))
-        
-        user = self.scope.get('user')
-        if not user or not user.is_authenticated:
-            print(f"WebSocket connection rejected: User not authenticated")
+        if not self.user or not self.user.is_authenticated:
+            logger.warning("WebSocket connection rejected: User not authenticated")
             await self.close(code=4001, reason="User not authenticated")
             return
         
-        print(f"WebSocket authenticating user: {user.username}, user_id={user.id}")
+        logger.info("WebSocket authenticating user: %s, user_id=%s", self.user.username, self.user.id)
         
-        # Verify user is a member or admin
+        # Join all communities the user is a member of
         try:
-            is_member = await self.is_member_or_admin()
-            if is_member:
-                await self.channel_layer.group_add(
-                    self.community_group_name,
-                    self.channel_name
-                )
-                await self.accept()
-                print(f"WebSocket connection accepted for community: {self.community_name}")
-                
-                # Send connection confirmation message
-                await self.send(text_data=json.dumps({
-                    'type': 'connection_established',
-                    'message': f'Connected to community chat {self.community_name}',
-                    'user': user.username
-                }))
-            else:
-                print(f"WebSocket connection rejected: User not authorized for community {self.community_name}")
-                await self.close(code=4003, reason="User not authorized")
-                return
+            communities = await self.get_user_communities()
+            self.community_groups = {}
+            for community in communities:
+                group_name = f'community_{community.id}'
+                self.community_groups[community.id] = group_name
+                await self.channel_layer.group_add(group_name, self.channel_name)
+                logger.debug("Joined group: %s", group_name)
+            
+            await self.accept()
+            logger.info("WebSocket connection accepted for user: %s", self.user.username)
+            
+            # Send connection confirmation
+            await self.send(text_data=json.dumps({
+                'type': 'connection_established',
+                'message': 'Connected to community chat service',
+                'user': self.user.username
+            }))
         except Exception as e:
-            print(f"WebSocket connection error: {str(e)}")
+            logger.error("WebSocket connection error: %s", str(e))
             await self.close(code=4000, reason=f"Connection error: {str(e)}")
             return
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'community_group_name'):
-            await self.channel_layer.group_discard(
-                self.community_group_name,
-                self.channel_name
-            )
-        print(f"WebSocket disconnected: close_code={close_code}")
+        if hasattr(self, 'community_groups'):
+            for group_name in self.community_groups.values():
+                try:
+                    await self.channel_layer.group_discard(group_name, self.channel_name)
+                    logger.debug("Discarded group: %s", group_name)
+                except Exception as e:
+                    logger.error("Error discarding group %s: %s", group_name, str(e))
+        logger.info("WebSocket disconnected: close_code=%s", close_code)
 
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
+            community_id = data.get('community_id')
             message = data.get('message', '')
-            attachment = data.get('attachment')  # URL or file metadata
+            attachment = data.get('attachment')
             
+            if not community_id:
+                logger.warning("Received message without community_id")
+                await self.send(text_data=json.dumps({
+                    'error': 'community_id is required'
+                }))
+                return
+                
+            # Verify user is a member or admin
+            is_authorized = await self.is_member_or_admin(community_id)
+            if not is_authorized:
+                logger.warning("User %s not authorized for community %s", self.user.username, community_id)
+                await self.send(text_data=json.dumps({
+                    'error': 'You are not authorized to send messages to this community'
+                }))
+                return
+                
             # Save message to database if there's content or an attachment
             if message.strip() or attachment:
-                saved_message = await self.save_message(message, attachment)
+                saved_message = await self.save_message(community_id, message, attachment)
                 
                 # Broadcast to group
                 await self.channel_layer.group_send(
-                    self.community_group_name,
+                    f'community_{community_id}',
                     {
                         'type': 'chat_message',
+                        'community_id': community_id,
                         'message': message,
                         'attachment': attachment,
-                        'sender': self.scope['user'].username,
-                        'sender_id': self.scope['user'].id,
+                        'sender': self.user.username,
+                        'sender_id': self.user.id,
                         'timestamp': saved_message.created_at.isoformat(),
                         'id': saved_message.id
                     }
                 )
+                logger.debug("Message sent to group: community_%s", community_id)
         except json.JSONDecodeError:
+            logger.error("Invalid message format received")
             await self.send(text_data=json.dumps({
                 'error': 'Invalid message format'
             }))
         except Exception as e:
-            print(f"Error processing message: {str(e)}")
+            logger.error("Error processing message: %s", str(e))
             await self.send(text_data=json.dumps({
                 'error': f'Error processing message: {str(e)}'
             }))
 
     async def chat_message(self, event):
-        # Send message to WebSocket
-        await self.send(text_data=json.dumps({
-            'content': event['message'],
-            'attachment': event['attachment'],
-            'sender': event['sender'],
-            'sender_id': event['sender_id'],
-            'timestamp': event['timestamp'],
-            'id': event.get('id')
-        }))
+        try:
+            # Send message to WebSocket
+            await self.send(text_data=json.dumps({
+                'community_id': event['community_id'],
+                'content': event['message'],
+                'attachment': event['attachment'],
+                'sender': event['sender'],
+                'sender_id': event['sender_id'],
+                'timestamp': event['timestamp'],
+                'id': event.get('id')
+            }))
+            logger.debug("Chat message sent to client: %s", event['sender'])
+        except Exception as e:
+            logger.error("Error sending chat message to client: %s", str(e))
 
     @database_sync_to_async
-    def is_member_or_admin(self):
-        user = self.scope['user']
-        if not user.is_authenticated:
+    def get_user_communities(self):
+        try:
+            if self.user.user_type == 'admin':
+                return list(Community.objects.all())
+            return list(Community.objects.filter(members__user=self.user))
+        except Exception as e:
+            logger.error("Error fetching user communities: %s", str(e))
+            raise
+
+    @database_sync_to_async
+    def is_member_or_admin(self, community_id):
+        if not self.user.is_authenticated:
             return False
         
-        print(f"Checking membership for user: {user.username}, type: {user.user_type}")
+        logger.debug("Checking membership for user: %s, community_id: %s", self.user.username, community_id)
         
-        if user.user_type == 'admin':
+        if self.user.user_type == 'admin':
             return True
             
         try:
-            # Improved logic to handle both numeric and string IDs
-            community = None
-            
-            # First try to get by ID (if it's a number)
-            if self.community_name.isdigit():
-                try:
-                    community = Community.objects.get(id=int(self.community_name))
-                except Community.DoesNotExist:
-                    pass
-            
-            # If not found by ID, try to get by name
-            if community is None:
-                try:
-                    community = Community.objects.get(name=self.community_name)
-                except Community.DoesNotExist:
-                    raise Community.DoesNotExist(f"Community not found with ID or name: {self.community_name}")
-            
+            community = Community.objects.get(id=community_id)
             is_member = CommunityMember.objects.filter(
                 community=community,
-                user=user
+                user=self.user
             ).exists()
             
-            print(f"User {user.username} membership check for community {self.community_name}: {is_member}")
+            logger.debug("User %s membership check for community %s: %s", self.user.username, community_id, is_member)
             return is_member
-            
-        except Community.DoesNotExist as e:
-            print(f"Community not found: {self.community_name} - {str(e)}")
+        except Community.DoesNotExist:
+            logger.warning("Community not found: %s", community_id)
             return False
         except Exception as e:
-            print(f"Error checking membership: {str(e)}")
+            logger.error("Error checking membership: %s", str(e))
             return False
 
     @database_sync_to_async
-    def save_message(self, message, attachment):
+    def save_message(self, community_id, message, attachment):
         try:
-            # Improved logic to handle both numeric and string IDs
-            community = None
-            
-            # First try to get by ID (if it's a number)
-            if self.community_name.isdigit():
-                try:
-                    community = Community.objects.get(id=int(self.community_name))
-                except Community.DoesNotExist:
-                    pass
-            
-            # If not found by ID, try to get by name
-            if community is None:
-                try:
-                    community = Community.objects.get(name=self.community_name)
-                except Community.DoesNotExist:
-                    raise Community.DoesNotExist(f"Community not found with ID or name: {self.community_name}")
-            
+            community = Community.objects.get(id=community_id)
             return CommunityMessage.objects.create(
                 community=community,
-                sender=self.scope['user'],
+                sender=self.user,
                 content=message,
                 attachment=attachment
             )
         except Community.DoesNotExist:
-            raise ValueError(f"Community not found: {self.community_name}")
+            raise ValueError(f"Community not found: {community_id}")
         except Exception as e:
             raise ValueError(f"Error saving message: {str(e)}")
