@@ -21,6 +21,7 @@ const CommunityChatApp = () => {
   const messageContainerRef = useRef(null);
   const navigate = useNavigate();
   const processedMessageIds = useRef(new Set());
+  const baseUrl = import.meta.env.VITE_API_URL;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -489,7 +490,7 @@ const CommunityChatApp = () => {
                         <div className="mt-2">
                           {msg.attachment.match(/\.(jpg|jpeg|png)$/i) ? (
                             <img
-                              src={msg.attachment}
+                              src={`http://localhost:8000${msg.attachment}`}
                               alt="attachment"
                               className="max-w-full rounded"
                               onError={(e) => {
@@ -498,7 +499,7 @@ const CommunityChatApp = () => {
                             />
                           ) : msg.attachment.endsWith('.pdf') ? (
                             <a
-                              href={msg.attachment}
+                              href={`http://localhost:8000${msg.attachment}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-300 hover:underline"
@@ -507,7 +508,7 @@ const CommunityChatApp = () => {
                             </a>
                           ) : (
                             <a
-                              href={msg.attachment}
+                              href={`http://localhost:8000${msg.attachment}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-300 hover:underline"
