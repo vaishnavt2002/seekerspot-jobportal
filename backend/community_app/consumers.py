@@ -4,8 +4,10 @@ from channels.db import database_sync_to_async
 from .models import Community, CommunityMessage, CommunityMember
 from django.contrib.auth import get_user_model
 import logging
+from .utils import get_attachment_type
 
-# Set up logging
+# Set
+
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
@@ -83,6 +85,11 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
             if message.strip() or attachment:
                 saved_message = await self.save_message(community_id, message, attachment)
                 
+                # Get the actual attachment URL from the saved message
+                attachment_url = None
+                if saved_message.attachment:
+                    attachment_url = saved_message.attachment.url
+                
                 # Broadcast to group
                 await self.channel_layer.group_send(
                     f'community_{community_id}',
@@ -90,7 +97,8 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                         'type': 'chat_message',
                         'community_id': community_id,
                         'message': message,
-                        'attachment': attachment,
+                        'attachment': attachment_url,
+                        'attachment_type': get_attachment_type(saved_message.attachment) if saved_message.attachment else None,
                         'sender': self.user.username,
                         'sender_id': self.user.id,
                         'timestamp': saved_message.created_at.isoformat(),
@@ -116,6 +124,7 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 'community_id': event['community_id'],
                 'content': event['message'],
                 'attachment': event['attachment'],
+                'attachment_type': event.get('attachment_type'),
                 'sender': event['sender'],
                 'sender_id': event['sender_id'],
                 'timestamp': event['timestamp'],

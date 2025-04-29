@@ -4,6 +4,13 @@ from rest_framework import permissions, status
 from .models import Community, CommunityMember, CommunityMessage
 from .serializer import CommunitySerializer, CommunityMemberSerializer, CommunityMessageSerializer
 from django.db.models import Q
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+import logging
+from .utils import get_attachment_type
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class IsAdminOrAuthenticated(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -140,6 +147,7 @@ class CommunityMessageListView(APIView):
         try:
             community_id = data.get('community')
             if not community_id:
+                logger.warning("Message post request missing community_id")
                 return Response(
                     {'error': 'community is required'}, 
                     status=status.HTTP_400_BAD_REQUEST
@@ -151,6 +159,7 @@ class CommunityMessageListView(APIView):
             ).exists()
             
             if not is_member and request.user.user_type != 'admin':
+                logger.warning("User %s not authorized to post in community %s", request.user.username, community_id)
                 return Response(
                     {'error': 'You are not a member of this community'}, 
                     status=status.HTTP_403_FORBIDDEN
@@ -158,9 +167,43 @@ class CommunityMessageListView(APIView):
                 
             serializer = CommunityMessageSerializer(data=data)
             if serializer.is_valid():
-                serializer.save(sender=request.user)
+                message = serializer.save(sender=request.user)
+                logger.info("Message saved successfully: id=%s, community=%s, sender=%s", 
+                           message.id, community_id, request.user.username)
+                
+                # Broadcast the message via WebSocket
+                try:
+                    channel_layer = get_channel_layer()
+                    group_name = f'community_{message.community.id}'
+                    attachment_url = message.attachment.url if message.attachment else None
+                    attachment_type = get_attachment_type(message.attachment) if message.attachment else None
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {
+                            'type': 'chat_message',
+                            'community_id': message.community.id,
+                            'message': message.content,
+                            'attachment': attachment_url,
+                            'attachment_type': attachment_type,
+                            'sender': message.sender.username,
+                            'sender_id': message.sender.id,
+                            'timestamp': message.created_at.isoformat(),
+                            'id': message.id
+                        }
+                    )
+                    logger.debug("Broadcasted message to group: %s", group_name)
+                except Exception as e:
+                    logger.error("Failed to broadcast message to WebSocket: %s", str(e))
+                    # Continue with response even if broadcast fails, as message is saved
+                    pass
+                
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            logger.warning("Invalid message data: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         except Community.DoesNotExist:
+            logger.warning("Community not found: %s", community_id)
             return Response({'error': 'Community not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error("Unexpected error in message post: %s", str(e))
+            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
