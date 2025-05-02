@@ -588,3 +588,23 @@ class JobApplicationStatusUpdateView(APIView):
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+class JobSeekerApplicationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            job_seeker = JobSeeker.objects.get(user=request.user)
+            applications = JobApplication.objects.filter(job_seeker=job_seeker).select_related('jobpost__job_provider')
+            serializer = JobSeekerApplicationSerializer(applications, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except JobSeeker.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching job seeker applications: {str(e)}")
+            return Response(
+                {"error": f"Server error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

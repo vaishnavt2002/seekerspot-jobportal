@@ -228,3 +228,37 @@ class LogoutView(APIView):
         response.delete_cookie('access_token')
         response.delete_cookie('refresh_token')
         return response
+    
+class UserView(APIView):
+    """
+    Get the basic info for the currently authenticated user
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        user_data = UserSerializer(user).data
+        
+        # Add profile-specific data
+        if user.user_type == 'job_seeker':
+            try:
+                profile = JobSeeker.objects.get(user=user)
+                user_data['job_seeker_profile'] = {
+                    'id': profile.id,
+                    'expected_salary': profile.expected_salary,
+                    'experience': profile.experience,
+                    'is_available': profile.is_available
+                }
+            except JobSeeker.DoesNotExist:
+                pass
+        elif user.user_type == 'job_provider':
+            try:
+                profile = JobProvider.objects.get(user=user)
+                user_data['job_provider_profile'] = {
+                    'id': profile.id,
+                    'company_name': profile.company_name,
+                }
+            except JobProvider.DoesNotExist:
+                pass
+                
+        return Response(user_data)

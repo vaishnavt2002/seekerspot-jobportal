@@ -5,6 +5,7 @@ import ProfilePage from '../pages/jobprovider/ProfilePage';
 import JobPostsPage from '../pages/jobprovider/JobPostsPage';
 import ApplicantsPage from '../pages/jobprovider/ApplicantsPage';
 import ShorlistedPage from '../pages/jobseeker/ShorlistedPage';
+import MeetingRoom from '../components/MeetingRoom';
 const JobProviderRoutes = [
   {
     path: '/jobprovider',
@@ -50,7 +51,17 @@ const JobProviderRoutes = [
           </ProtectedRoute>
         ),
       },
+      
     ],
+    
+  },
+  {
+    path: '/jobprovider/meet/:meetingId', 
+    element: (
+      <ProtectedRoute role="job_provider">
+        <MeetingRoom />
+      </ProtectedRoute>
+    ),
   },
 ];
 

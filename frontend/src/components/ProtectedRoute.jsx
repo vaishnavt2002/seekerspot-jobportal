@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect, useState, useRef } from 'react';
 import Loading from './Loading';
@@ -10,8 +10,13 @@ const ProtectedRoute = ({ children, role }) => {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const authCheckAttempted = useRef(false);
+  const location = useLocation();
+  
+  // Check if this is a meeting route
+  const isMeetingRoute = location.pathname.includes('/meet/');
 
-  useEffect(() => {    if (authCheckAttempted.current) return;
+  useEffect(() => {
+    if (authCheckAttempted.current) return;
     
     const verifyAuth = async () => {
       if (isAuthenticated) {
@@ -22,7 +27,6 @@ const ProtectedRoute = ({ children, role }) => {
       try {
         await getProfile();
       } catch (err) {
-
         if (err.status === 401) {
           try {
             console.log("Attempting token refresh from protected route");
@@ -49,8 +53,21 @@ const ProtectedRoute = ({ children, role }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (role && user?.user_type !== role) {
-    return <Navigate to="/" replace />;
+  // Check if role-based access is required
+  if (role) {
+    // For meeting routes, allow both job_provider and job_seeker access
+    if (isMeetingRoute && (user?.user_type === 'job_provider' || user?.user_type === 'job_seeker')) {
+      return children;
+    }
+    
+    // For non-meeting routes, enforce the specific role requirement
+    if (user?.user_type !== role) {
+      // Redirect to appropriate dashboard based on user type
+      if (user?.user_type === 'job_provider') {
+        return <Navigate to="/jobprovider/dashboard" replace />;
+      }
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;

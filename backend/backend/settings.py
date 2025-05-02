@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.10']
 
 
 # Application definition
@@ -103,7 +103,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173', 'http://localhost:3000'
+    'http://localhost:5173', 'http://localhost:3000',"http://192.168.1.10:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
 
@@ -143,7 +143,8 @@ DATABASES = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
+# Only set this to True temporarily during local testing
+ALLOW_ALL_MEETING_ACCESS = True
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

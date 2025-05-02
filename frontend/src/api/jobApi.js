@@ -139,6 +139,24 @@ const jobApi = {
       throw new Error(error.response?.data?.error || error.message || 'Failed to complete interview schedule');
     }
   },
+  getJobSeekerInterviews: async () => {
+    try {
+      const response = await axiosInstance.get('/job-seeker/interviews/');
+      return response;
+    } catch (error) {
+      console.error('Job seeker interviews fetch error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to fetch job seeker interviews');
+    }
+  },
+  getJobSeekerApplications: async () => {
+    try {
+      const response = await axiosInstance.get('/job-seeker/applications/');
+      return response;
+    } catch (error) {
+      console.error('Job seeker applications fetch error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to fetch job seeker applications');
+    }
+  },
 };
 
 export default jobApi;

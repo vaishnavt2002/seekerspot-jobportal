@@ -24,6 +24,9 @@ export const logout = async () => {
 export const getProfile = async () => {
     return axiosInstance.get('/auth/profile/');
 };
+export const getUser = async () =>{
+    return axiosInstance.get('/auth/user/');
+}
 
 export const updateProfile = async (profileData) => {
     return axiosInstance.put('/auth/profile/', profileData);

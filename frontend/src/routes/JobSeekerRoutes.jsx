@@ -8,6 +8,9 @@ import JobPostingPage from '../pages/jobseeker/JobPostingPage';
 import CommunityList from '../pages/jobseeker/CommunityList';
 import CommunityChat from '../pages/jobseeker/CommunityChatApp';
 import CommunityChatApp from '../pages/jobseeker/CommunityChatApp';
+import Meeting from '../components/MeetingRoom';
+import AppliedJobs from '../components/jobseeker/AppliedJobs';
+import MeetingRoom from '../components/MeetingRoom';
 
 const JobSeekerRoutes = [
   {
@@ -54,8 +57,24 @@ const JobSeekerRoutes = [
           </ProtectedRoute>
         ),
       },
+      {
+        path: '/my-jobs',
+        element: (
+          <ProtectedRoute role='job_seeker'>
+            < AppliedJobs/>
+          </ProtectedRoute>
+        ),
+      },  
       
     ],
+  },
+  {
+    path: '/meet/:meetingId',
+    element: (
+      <ProtectedRoute role="job_seeker">
+        <MeetingRoom />
+      </ProtectedRoute>
+    ),
   },
 ];
 

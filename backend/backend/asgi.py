@@ -1,3 +1,4 @@
+# backend/asgi.py
 import os
 import django
 
@@ -13,7 +14,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
 import community_app.routing
-from channels.sessions import SessionMiddlewareStack
+import interview_app.routing
 
 # Create the ASGI application
 application = ProtocolTypeRouter({
@@ -21,7 +22,8 @@ application = ProtocolTypeRouter({
     'websocket': AllowedHostsOriginValidator(
         AuthMiddlewareStack(
             URLRouter(
-                community_app.routing.websocket_urlpatterns
+                community_app.routing.websocket_urlpatterns + 
+                interview_app.routing.websocket_urlpatterns
             )
         )
     ),

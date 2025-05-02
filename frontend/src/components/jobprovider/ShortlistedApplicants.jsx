@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import jobApi from '../../api/jobApi';
+import JoinMeetingButton from '../JoinMeetingButton';
 
 // Sub-component to display applicant details
 const ApplicantDetails = ({ applicant }) => {
@@ -180,7 +181,7 @@ const InterviewScheduleForm = ({ applicationId, onSchedule, onCancel, existingIn
           >
             <option value="AUDIO_ONLY">Audio Only</option>
             <option value="VIDEO_ONLY">Video Only</option>
-            {/*<option value="AUDIO_AND_VIDEO">Audio and Video</option>*/}
+            <option value="AUDIO_AND_VIDEO">Audio and Video</option>
           </select>
         </div>
         <div>
@@ -449,15 +450,12 @@ export default function ShortlistedApplicants() {
                               <p className="text-sm text-gray-600">Meeting ID: {activeInterview.meeting_id}</p>
                             )}
                             {activeInterview.meeting_id && activeInterview.status !== 'CANCELLED' && activeInterview.status !== 'COMPLETED' && (
-                              <a
-                                href={`/meet/${activeInterview.meeting_id}?type=${activeInterview.interview_type}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <JoinMeetingButton
+                                meetingId={activeInterview.meeting_id}
+                                interviewType={activeInterview.interview_type}
                                 className="text-blue-600 hover:underline"
                                 onClick={(e) => e.stopPropagation()}
-                              >
-                                Join Meeting
-                              </a>
+                              />
                             )}
                           </div>
                         ) : (

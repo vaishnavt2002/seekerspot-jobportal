@@ -252,3 +252,41 @@ class JobApplicationDetailSerializer(serializers.ModelSerializer):
         """Get all interviews for this application"""
         interviews = InterviewSchedule.objects.filter(application=obj.id)
         return InterviewScheduleSerializer(interviews, many=True).data
+class JobSeekerApplicationSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(source='jobpost.title')
+    company_name = serializers.CharField(source='jobpost.job_provider.company_name')
+    company_logo = serializers.SerializerMethodField()
+    job_details = serializers.SerializerMethodField()
+    interviews = InterviewScheduleSerializer(many=True)
+
+    class Meta:
+        model = JobApplication
+        fields = [
+            'id',
+            'jobpost',
+            'job_title',
+            'company_name',
+            'company_logo',
+            'status',
+            'applied_at',
+            'updated_at',
+            'job_details',
+            'interviews',
+        ]
+        read_only_fields = ['id', 'jobpost', 'job_seeker', 'status', 'applied_at', 'updated_at']
+
+    def get_company_logo(self, obj):
+        return obj.jobpost.job_provider.company_logo.url if obj.jobpost.job_provider.company_logo else None
+
+    def get_job_details(self, obj):
+        job = obj.jobpost
+        return {
+            'location': job.location,
+            'job_type': job.job_type,
+            'employment_type': job.employment_type,
+            'domain': job.domain,
+            'min_salary': job.min_salary,
+            'max_salary': job.max_salary,
+            'application_deadline': job.application_deadline,
+            'skills': SkillSerializer(job.skills.all(), many=True).data,
+        }
