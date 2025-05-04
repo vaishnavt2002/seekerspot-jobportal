@@ -29,9 +29,14 @@ class CommunityListView(APIView):
     def post(self, request):
         serializer = CommunitySerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(created_by=request.user)
+            community = serializer.save(created_by=request.user)
+            # Automatically add the creator as a member
+            CommunityMember.objects.get_or_create(community=community, user=request.user)
+            logger.info("Community created and user %s added as member: %s", request.user.username, community.name)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.warning("Invalid community data: %s", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CommunityDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
