@@ -1,6 +1,6 @@
 # community/serializers.py
 from rest_framework import serializers
-from .models import Community, CommunityMember, CommunityMessage
+from .models import Community, CommunityMember, CommunityMessage, UserReadStatus
 from auth_app.models import User
 
 class CommunitySerializer(serializers.ModelSerializer):
@@ -28,3 +28,11 @@ class CommunityMessageSerializer(serializers.ModelSerializer):
         # Remove sender_id if present since it's only for validation
         validated_data.pop('sender_id', None)
         return super().create(validated_data)
+    
+class UserReadStatusSerializer(serializers.ModelSerializer):
+    unread_count = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = UserReadStatus
+        fields = ['id', 'user', 'community', 'last_read_message', 'last_read_time', 'unread_count']
+        read_only_fields = ['user', 'last_read_time']

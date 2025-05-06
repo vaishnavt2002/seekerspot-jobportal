@@ -62,3 +62,18 @@ class CommunityMessage(models.Model):
         indexes = [
             models.Index(fields=['community', 'created_at']),
         ]
+
+class UserReadStatus(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='read_statuses')
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='read_statuses')
+    last_read_message = models.ForeignKey(CommunityMessage, on_delete=models.SET_NULL, null=True, blank=True)
+    last_read_time = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'community')
+        indexes = [
+            models.Index(fields=['user', 'community']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}'s read status in {self.community.name}"

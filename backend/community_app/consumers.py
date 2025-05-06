@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Community, CommunityMessage, CommunityMember
+from .models import Community, CommunityMessage, CommunityMember, UserReadStatus
 from django.contrib.auth import get_user_model
 import logging
 from .utils import get_attachment_type
@@ -61,9 +61,16 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
+            message_type = data.get('type', 'chat_message')
+        
+            if message_type == 'mark_read':
+                # Handle mark read message
+                await self.handle_mark_read(data)
+                return
             community_id = data.get('community_id')
             message = data.get('message', '')
             attachment = data.get('attachment')
+            
             
             if not community_id:
                 logger.warning("Received message without community_id")
@@ -184,3 +191,65 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
             raise ValueError(f"Community not found: {community_id}")
         except Exception as e:
             raise ValueError(f"Error saving message: {str(e)}")
+        
+    async def handle_mark_read(self, data):
+        try:
+            community_id = data.get('community_id')
+            message_id = data.get('message_id')
+            
+            if not community_id:
+                await self.send(text_data=json.dumps({
+                    'error': 'community_id is required'
+                }))
+                return
+                
+            # Verify user is a member or admin
+            is_authorized = await self.is_member_or_admin(community_id)
+            if not is_authorized:
+                await self.send(text_data=json.dumps({
+                    'error': 'You are not authorized for this community'
+                }))
+                return
+                
+            # Update read status
+            success = await self.update_read_status(community_id, message_id)
+            
+            if success:
+                await self.send(text_data=json.dumps({
+                    'type': 'read_status_updated',
+                    'community_id': community_id,
+                    'status': 'success'
+                }))
+            else:
+                await self.send(text_data=json.dumps({
+                    'type': 'read_status_updated',
+                    'community_id': community_id,
+                    'status': 'error'
+                }))
+                
+        except Exception as e:
+            logger.error("Error processing mark_read: %s", str(e))
+            await self.send(text_data=json.dumps({
+                'error': f'Error updating read status: {str(e)}'
+            }))
+
+    @database_sync_to_async
+    def update_read_status(self, community_id, message_id=None):
+        try:
+            community = Community.objects.get(id=community_id)
+            
+            if message_id:
+                message = CommunityMessage.objects.get(id=message_id, community=community)
+            else:
+                message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
+                
+            if message:
+                UserReadStatus.objects.update_or_create(
+                    user=self.user,
+                    community=community,
+                    defaults={'last_read_message': message}
+                )
+            return True
+        except (Community.DoesNotExist, CommunityMessage.DoesNotExist) as e:
+            logger.error("Error updating read status: %s", str(e))
+            return False

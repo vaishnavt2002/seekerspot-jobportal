@@ -125,7 +125,31 @@ class WebSocketService {
         this.isConnecting = false;
       }
     }
-  
+    async markAsRead(communityId, messageId = null) {
+      try {
+          // If not connected, queue this for later
+          if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+              this.pendingMessages.push({
+                  type: 'mark_read',
+                  community_id: communityId,
+                  message_id: messageId
+              });
+              return false;
+          }
+          
+          // Send through WebSocket
+          this.socket.send(JSON.stringify({
+              type: 'mark_read',
+              community_id: communityId,
+              message_id: messageId
+          }));
+          
+          return true;
+      } catch (error) {
+          console.error('Error marking messages as read via WebSocket:', error);
+          return false;
+      }
+  }
     getStatus() {
       if (!this.socket) return 'DISCONNECTED';
       switch (this.socket.readyState) {

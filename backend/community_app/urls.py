@@ -8,4 +8,5 @@ urlpatterns = [
     path('communities/<int:pk>/leave/', CommunityLeaveView.as_view(), name='community-leave'),
     path('members/', CommunityMemberListView.as_view(), name='member-list'),
     path('messages/', CommunityMessageListView.as_view(), name='message-list'),
+    path('read-status/', UserReadStatusView.as_view(), name='read-status'),
 ]
