@@ -494,8 +494,6 @@ const CreateCommunityModal = ({ isOpen, onClose, newCommunity, setNewCommunity, 
 };
 
 // Main Chat Area Component
-// Main Chat Area Component
-// Main Chat Area Component
 const ChatArea = ({ 
   selectedCommunityId, 
   community, 
@@ -516,9 +514,12 @@ const ChatArea = ({
   openImageModal,
   messagesEndRef,
   firstUnreadMessageId,
-  handleScroll
+  handleScroll,
+  messageContainerRef,  // Added this
+  showScrollButton,    
+  scrollToBottom       
 }) => {
-  if (!selectedCommunityId) {
+    if (!selectedCommunityId) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
         Select a community to start chatting
@@ -544,37 +545,40 @@ const ChatArea = ({
 
       {/* Messages Container - with scroll handler */}
       <div
-        className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4"
-        style={{ maxHeight: 'calc(100vh - 250px)' }}
-        onScroll={handleScroll}
-      >
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-500">No messages yet. Start the conversation!</div>
-        ) : (
-          <>
-            {firstUnreadMessageId && (
-              <div className="sticky top-0 bg-yellow-100 text-yellow-800 py-2 px-4 text-center rounded-lg mb-4 z-10">
-                New messages below
-              </div>
-            )}
-            
-            {messages.map((msg, index) => {
-              const isUnread = firstUnreadMessageId && msg.id >= firstUnreadMessageId;
-              return (
-                <ChatMessage 
-                  key={msg.id || `msg-${index}`} 
-                  message={msg} 
-                  openImageModal={openImageModal}
-                  isOwnMessage={msg.isOwnMessage}
-                  isUnread={isUnread}
-                />
-              );
-            })}
-          </>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+  className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4"
+  style={{ maxHeight: 'calc(100vh - 250px)' }}
+  onScroll={handleScroll}
+  ref={messageContainerRef}
+>
+  {messages.length === 0 ? (
+    <div className="text-center text-gray-500">No messages yet. Start the conversation!</div>
+  ) : (
+    <>
+      {firstUnreadMessageId && (
+        <UnreadMessagesIndicator count={unreadCounts[selectedCommunityId] || 0} />
+      )}
+      
+      {messages.map((msg, index) => {
+        const isUnread = firstUnreadMessageId && msg.id >= firstUnreadMessageId;
+        return (
+          <ChatMessage 
+            key={msg.id || `msg-${index}`} 
+            message={msg} 
+            openImageModal={openImageModal}
+            isOwnMessage={msg.isOwnMessage}
+            isUnread={isUnread}
+          />
+        );
+      })}
+    </>
+  )}
+  <div ref={messagesEndRef} />
+</div>
 
+{/* Add the scroll to bottom button */}
+{showScrollButton && (
+  <ScrollToBottomButton onClick={scrollToBottom} visible={true} />
+)}
       {/* Input Area */}
       {(community?.is_member || user.user_type === 'admin') && (
         <ChatInput 
@@ -685,6 +689,8 @@ const CommunityChatApp = () => {
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 const [isProcessingReadStatus, setIsProcessingReadStatus] = useState(false);
+const [isAtBottom, setIsAtBottom] = useState(true);
+const [showScrollButton, setShowScrollButton] = useState(false);
 const previousSelectedCommunity = useRef(null);
 const debounceTimers = useRef({});
   // Add these to the CommunityChatApp component
@@ -718,8 +724,9 @@ const updateReadStatus = (communityId, messageId) => {
         ...prev,
         [communityId]: 0
       }));
+      setFirstUnreadMessageId(null);
       
-      // Only send via WebSocket if already connected
+      // Also send via WebSocket for real-time updates to other clients
       if (WebSocketService.getStatus() === 'CONNECTED') {
         WebSocketService.sendMessage({
           type: 'mark_read',
@@ -755,24 +762,25 @@ const scrollToFirstUnread = () => {
 
 // Add this function to handle scroll detection
 const handleScroll = (e) => {
-  // Only process scroll events if we're not already marking as read
-  if (isProcessingReadStatus || !firstUnreadMessageId || !selectedCommunityId) return;
+  // Check if user has scrolled away from bottom
+  const container = e.target;
+  const scrollPosition = container.scrollTop + container.clientHeight;
+  const scrollHeight = container.scrollHeight;
   
-  // Debounce the scroll handling
-  if (debounceTimers.current.scroll) {
-    clearTimeout(debounceTimers.current.scroll);
-  }
+  // If we're within 100px of the bottom, consider it "at bottom"
+  const atBottom = scrollHeight - scrollPosition < 100;
+  setIsAtBottom(atBottom);
+  setShowScrollButton(!atBottom);
   
-  debounceTimers.current.scroll = setTimeout(() => {
-    const container = e.target;
-    const scrollPosition = container.scrollTop + container.clientHeight;
-    
+  // Process unread messages if scrolled far enough
+  if (firstUnreadMessageId && selectedCommunityId) {
     const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
     if (unreadElement) {
       const unreadPosition = unreadElement.offsetTop;
       
       if (scrollPosition >= unreadPosition) {
-        // Find the latest message ID
+        // User has scrolled past the first unread message
+        // Find the latest message ID and mark as read
         if (messages.length > 0) {
           const latestMessage = messages[messages.length - 1];
           updateReadStatus(selectedCommunityId, latestMessage.id);
@@ -780,9 +788,144 @@ const handleScroll = (e) => {
         }
       }
     }
-  }, 300);
+  }
+  
+  // If we scrolled to the bottom and there are unread messages, mark them as read
+  if (atBottom && selectedCommunityId && unreadCounts[selectedCommunityId] > 0) {
+    if (messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      updateReadStatus(selectedCommunityId, latestMessage.id);
+    }
+  }
 };
+const setupWebSocketMessageHandler = () => {
+  WebSocketService.onMessage((data) => {
+    console.log('Received WebSocket message:', data);
+    
+    if (data.error) {
+      console.error('WebSocket error:', data.error);
+      setError(data.error);
+      return;
+    }
 
+    if (data.type === 'connection_established') {
+      console.log('WebSocket connection established:', data.message);
+      return;
+    }
+    
+    if (data.type === 'read_status_updated') {
+      // Update unread counts when read status is updated by any client
+      setUnreadCounts(prev => ({
+        ...prev,
+        [data.community_id]: 0
+      }));
+      
+      if (String(data.community_id) === String(selectedCommunityId)) {
+        setFirstUnreadMessageId(null);
+      }
+      return;
+    }
+    
+    if (data.type === 'unread_counts_update') {
+      // Handle unread counts update from server
+      if (data.unread_counts) {
+        setUnreadCounts(data.unread_counts);
+      }
+      return;
+    }
+
+    // Handle incoming chat message
+    if (data.content || data.attachment) {
+      const messageId = data.id;
+      
+      // Skip if we've already processed this message
+      if (messageId && processedMessageIds.current.has(messageId)) {
+        return;
+      }
+      
+      // Add to processed set
+      if (messageId) {
+        processedMessageIds.current.add(messageId);
+      }
+      
+      // Format the message
+      const formattedMessage = {
+        id: data.id,
+        content: data.content,
+        attachment: data.attachment,
+        sender: data.sender,
+        sender_id: data.sender_id,
+        timestamp: data.timestamp || data.created_at,
+        isOwnMessage: isUserMessage(data),
+      };
+      
+      // Handle message for current community
+      if (String(data.community_id) === String(selectedCommunityId)) {
+        // Update messages state
+        setMessages(prev => {
+          // Filter out optimistic messages
+          const filteredMessages = prev.filter(
+            msg => !msg.isOptimistic || msg.content !== formattedMessage.content
+          );
+          
+          return [...filteredMessages, formattedMessage].sort(
+            (a, b) => new Date(a.timestamp || a.created_at) - new Date(b.timestamp || b.created_at)
+          );
+        });
+        
+        // Set first unread message ID if not our own message and we're not at bottom
+        if (!formattedMessage.isOwnMessage && !isAtBottom && !firstUnreadMessageId) {
+          setFirstUnreadMessageId(messageId);
+        }
+        
+        // Update unread count if not at bottom and not our own message
+        if (!formattedMessage.isOwnMessage && !isAtBottom) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.community_id]: (prev[data.community_id] || 0) + 1
+          }));
+          
+          // Show scroll button when new messages arrive and we're not at bottom
+          setShowScrollButton(true);
+        }
+      } else {
+        // For other communities, just update unread counts for non-user messages
+        if (!formattedMessage.isOwnMessage) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.community_id]: (prev[data.community_id] || 0) + 1
+          }));
+        }
+      }
+    }
+  });
+};
+useEffect(() => {
+  // This effect will run when the component mounts
+  if (isAuthenticated) {
+    fetchUnreadCounts();
+    
+    // Add a visibility change listener to fetch unread counts
+    // when the user returns to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUnreadCounts();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }
+}, [isAuthenticated]);
+useEffect(() => {
+  if (isAuthenticated) {
+    setupWebSocketMessageHandler();
+  }
+}, [isAuthenticated]);
 // Add a function to handle incoming messages and update unread counts
 const handleIncomingMessage = (data) => {
     if (!data.community_id || !data.id) return;
@@ -812,18 +955,34 @@ const handleIncomingMessage = (data) => {
         }));
     }
 };
-  const fetchUnreadCounts = async () => {
-    try {
-      const response = await axiosInstance.get('/community/read-status/');
-      const unreadMap = {};
-      response.forEach(status => {
-        unreadMap[status.community] = status.unread_count;
-      });
-      setUnreadCounts(unreadMap);
-    } catch (err) {
-      console.error('Error fetching unread counts:', err);
+const fetchUnreadCounts = async () => {
+  try {
+    const response = await axiosInstance.get('/community/read-status/');
+    
+    // Update unread counts state
+    const unreadCountsMap = {};
+    response.forEach(status => {
+      unreadCountsMap[status.community] = status.unread_count || 0;
+    });
+    
+    setUnreadCounts(unreadCountsMap);
+    
+    // If we're in a community with unread messages, set the first unread message ID
+    if (selectedCommunityId && unreadCountsMap[selectedCommunityId] > 0) {
+      try {
+        const unreadResponse = await axiosInstance.get(`/community/first-unread/?community=${selectedCommunityId}`);
+        if (unreadResponse.has_unread && unreadResponse.first_unread_message) {
+          setFirstUnreadMessageId(unreadResponse.first_unread_message.id);
+        }
+      } catch (err) {
+        console.error("Error fetching first unread message:", err);
+      }
     }
-  };
+  } catch (err) {
+    console.error("Error fetching unread counts:", err);
+  }
+};
+
   const markMessagesAsRead = async (communityId, messageId = null) => {
     try {
       // Call API to mark messages as read
@@ -852,7 +1011,17 @@ const handleIncomingMessage = (data) => {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setIsAtBottom(true);
+      setShowScrollButton(false);
+      
+      // Mark messages as read when we scroll to the bottom
+      if (selectedCommunityId && messages.length > 0) {
+        const latestMessage = messages[messages.length - 1];
+        updateReadStatus(selectedCommunityId, latestMessage.id);
+      }
+    }
   };
 
   const isUserMessage = (message) => {
@@ -1389,6 +1558,7 @@ useEffect(() => {
                 messagesEndRef={messagesEndRef}
                 firstUnreadMessageId={firstUnreadMessageId}
                 handleScroll={handleScroll}
+                messageContainerRef={messageContainerRef}
             />
              <ScrollToUnreadButton 
         onClick={scrollToFirstUnread} 

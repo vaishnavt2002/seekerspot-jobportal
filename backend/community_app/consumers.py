@@ -67,6 +67,10 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 # Handle mark read message
                 await self.handle_mark_read(data)
                 return
+            elif message_type == 'fetch_unread_counts':
+                # Handle fetching unread counts
+                await self.handle_fetch_unread_counts()
+                return
             community_id = data.get('community_id')
             message = data.get('message', '')
             attachment = data.get('attachment')
@@ -253,3 +257,55 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
         except (Community.DoesNotExist, CommunityMessage.DoesNotExist) as e:
             logger.error("Error updating read status: %s", str(e))
             return False
+    
+    async def handle_fetch_unread_counts(self):
+        try:
+            # Get unread counts for all communities the user is a member of
+            unread_counts = await self.get_unread_counts()
+            
+            # Send unread counts to the client
+            await self.send(text_data=json.dumps({
+                'type': 'unread_counts_update',
+                'unread_counts': unread_counts
+            }))
+        except Exception as e:
+            logger.error("Error fetching unread counts: %s", str(e))
+            await self.send(text_data=json.dumps({
+                'error': f'Error fetching unread counts: {str(e)}'
+            }))
+
+    @database_sync_to_async
+    def get_unread_counts(self):
+        try:
+            result = {}
+            # Get communities the user is a member of
+            if self.user.user_type == 'admin':
+                communities = Community.objects.all()
+            else:
+                communities = Community.objects.filter(members__user=self.user)
+                
+            for community in communities:
+                # Get user's last read message timestamp
+                read_status = UserReadStatus.objects.filter(
+                    user=self.user,
+                    community=community
+                ).first()
+                
+                if read_status and read_status.last_read_message:
+                    # Count messages newer than the last read
+                    unread_count = CommunityMessage.objects.filter(
+                        community=community,
+                        created_at__gt=read_status.last_read_message.created_at
+                    ).exclude(sender=self.user).count()  # Exclude user's own messages
+                else:
+                    # If no read status, all messages are unread
+                    unread_count = CommunityMessage.objects.filter(
+                        community=community
+                    ).exclude(sender=self.user).count()
+                
+                result[str(community.id)] = unread_count
+                
+            return result
+        except Exception as e:
+            logger.error("Error getting unread counts: %s", str(e))
+            return {}
