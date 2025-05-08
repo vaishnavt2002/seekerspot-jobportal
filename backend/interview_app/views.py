@@ -32,11 +32,19 @@ class ShortlistedApplicantsView(APIView):
                 status='SHORTLISTED'
             )
             serializer = JobApplicationDetailSerializer(applications, many=True)
+            logger.info("Successfully returned %d shortlisted applications for job %s", len(serializer.data), pk)
             return Response(serializer.data)
         except JobProvider.DoesNotExist:
+            logger.warning("Job provider profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error("Error fetching shortlisted applicants for job %s: %s", pk, str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class InterviewScheduleCreateView(APIView):

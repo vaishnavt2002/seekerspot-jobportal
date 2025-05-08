@@ -5,8 +5,7 @@ from .models import Community, CommunityMessage, CommunityMember, UserReadStatus
 from django.contrib.auth import get_user_model
 import logging
 from .utils import get_attachment_type
-
-# Set
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -240,24 +239,29 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def update_read_status(self, community_id, message_id=None):
         try:
-            community = Community.objects.get(id=community_id)
-            
-            if message_id:
-                message = CommunityMessage.objects.get(id=message_id, community=community)
-            else:
-                message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
+            # Use shorter transactions to reduce lock time
+            with transaction.atomic():
+                community = Community.objects.get(id=community_id)
                 
-            if message:
-                UserReadStatus.objects.update_or_create(
-                    user=self.user,
-                    community=community,
-                    defaults={'last_read_message': message}
-                )
+                if message_id:
+                    try:
+                        message_id = int(message_id)
+                        message = CommunityMessage.objects.get(id=message_id, community=community)
+                    except (ValueError, TypeError):
+                        message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
+                else:
+                    message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
+                    
+                if message:
+                    UserReadStatus.objects.update_or_create(
+                        user=self.user,
+                        community=community,
+                        defaults={'last_read_message': message}
+                    )
             return True
-        except (Community.DoesNotExist, CommunityMessage.DoesNotExist) as e:
+        except Exception as e:
             logger.error("Error updating read status: %s", str(e))
             return False
-    
     async def handle_fetch_unread_counts(self):
         try:
             # Get unread counts for all communities the user is a member of

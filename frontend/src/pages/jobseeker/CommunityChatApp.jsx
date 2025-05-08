@@ -4,6 +4,7 @@ import axiosInstance from '../../api/axiosInstance';
 import WebSocketService from '../../services/websocket';
 import { useSelector } from 'react-redux';
 import { debounce } from 'lodash';
+import Loading from '../../components/Loading'
 
 // Constants
 const BASE_URL = 'http://127.0.0.1:8000';
@@ -46,7 +47,6 @@ const getFileNameFromPath = (filePath) => {
 };
 
 // Community List Item Component
-// Update CommunityListItem component
 const CommunityListItem = ({ community, isSelected, isMember, isAdmin, onSelect, onJoin, unreadCount }) => {
   return (
     <div
@@ -98,7 +98,6 @@ const CommunityListItem = ({ community, isSelected, isMember, isAdmin, onSelect,
   );
 };
 // Sidebar Component
-// Complete CommunitySidebar Component
 const CommunitySidebar = ({ 
   isSidebarOpen, 
   myCommunities, 
@@ -232,7 +231,7 @@ const ChatMessage = ({ message, openImageModal, isOwnMessage, isUnread }) => {
               </div>
             ) : (
               <div className="flex items-center space-x-2 p-2 bg-gray-100 bg-opacity-30 rounded">
-                <div className={isOwnMessage ? 'text-white' : 'text-gray-700'}>
+                <div className={isOwnMessage ? 'text-gray-700' : 'text-gray-700'}>
                   <FileIcon filePath={message.attachment} />
                 </div>
                 <a
@@ -240,7 +239,7 @@ const ChatMessage = ({ message, openImageModal, isOwnMessage, isUnread }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`${
-                    isOwnMessage ? 'text-white' : 'text-blue-600'
+                    isOwnMessage ? 'text-gray-700' : 'text-blue-600'
                   } hover:underline text-sm flex-1 truncate`}
                 >
                   {getFileNameFromPath(message.attachment)}
@@ -1489,7 +1488,7 @@ useEffect(() => {
     return <div className="min-h-screen flex items-center justify-center">Please log in to view communities.</div>;
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <Loading/>;
   if (error && !selectedCommunityId) return <div className="min-h-screen flex items-center justify-center text-red-500">Error: {error}</div>;
 
   return (
