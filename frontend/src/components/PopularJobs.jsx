@@ -3,7 +3,7 @@ import { MapPin, Clock, BriefcaseBusiness } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function PopularJobs({ jobs, loading }) {
-  const baseURL=import.meta.env.VITE_MEDIA_URL
+  const baseURL=import.meta.env.VITE_BASE_URL
   if (loading) {
     return (
       <p>loading....</p>

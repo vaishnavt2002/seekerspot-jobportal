@@ -202,5 +202,57 @@ CACHES = {
         'LOCATION': 'unique-snowflake',  
     }
 }
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
 
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'api.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        # Your application loggers
+        'backend': {  # Replace with your Django app name
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Request/response logging
+        'django.request': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Silence Django DB query logging
+        'django.db.backends': {
+            'handlers': [],  # Empty list = no handlers = no logging
+            'propagate': False,
+        },
+    },
+    # Root logger
+    'root': {
+        'handlers': ['file'],
+        'level': 'WARNING',
+    }
+}
 

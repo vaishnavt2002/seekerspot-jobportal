@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { debounce } from 'lodash';
 import jobApi from '../../api/jobApi';
 
@@ -91,7 +91,7 @@ const SearchAndFilters = ({ searchQuery, filters, sort, onSearchChange, onFilter
 };
 
 // Job List Component
-const JobList = ({ jobPosts, isLoading, hasMore, lastJobElementRef, onView, onEdit, onDelete, formatDate }) => {
+const JobList = ({ jobPosts, isLoading, onView, onEdit, onDelete, formatDate }) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left border-collapse">
@@ -106,10 +106,9 @@ const JobList = ({ jobPosts, isLoading, hasMore, lastJobElementRef, onView, onEd
           </tr>
         </thead>
         <tbody>
-          {jobPosts.map((job, index) => (
+          {jobPosts.map((job) => (
             <tr
               key={job.id}
-              ref={index === jobPosts.length - 1 ? lastJobElementRef : null}
               className="border-b hover:bg-gray-50"
             >
               <td className="px-4 py-2">{job.title}</td>
@@ -142,15 +141,154 @@ const JobList = ({ jobPosts, isLoading, hasMore, lastJobElementRef, onView, onEd
               </td>
             </tr>
           ))}
+          {jobPosts.length === 0 && !isLoading && (
+            <tr>
+              <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                No job posts found
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
-      {isLoading && <p className="text-center py-4">Loading...</p>}
-      {!hasMore && jobPosts.length > 0 && (
-        <p className="text-center py-4 text-gray-500">No more job posts to load</p>
+      {isLoading && (
+        <div className="flex justify-center items-center py-8">
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+          <span className="ml-2 text-gray-600">Loading job posts...</span>
+        </div>
       )}
-      {jobPosts.length === 0 && !isLoading && (
-        <p className="text-center py-4 text-gray-500">No job posts found</p>
-      )}
+    </div>
+  );
+};
+
+// Pagination Component
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  // Function to generate pagination numbers intelligently
+  const generatePaginationNumbers = () => {
+    // Always show first and last page
+    // Show 2 pages before and after current page
+    // Use ellipsis (...) to represent skipped pages
+    
+    const pagesToShow = [];
+    const maxVisiblePages = 7; // Maximum number of page numbers to show
+    
+    if (totalPages <= maxVisiblePages) {
+      // If total pages is small, show all pages
+      for (let i = 1; i <= totalPages; i++) {
+        pagesToShow.push(i);
+      }
+    } else {
+      // Always add page 1
+      pagesToShow.push(1);
+      
+      // Calculate range around current page
+      const rangeStart = Math.max(2, currentPage - 2);
+      const rangeEnd = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Add ellipsis if needed before current range
+      if (rangeStart > 2) {
+        pagesToShow.push('...');
+      }
+      
+      // Add pages around current page
+      for (let i = rangeStart; i <= rangeEnd; i++) {
+        pagesToShow.push(i);
+      }
+      
+      // Add ellipsis if needed after current range
+      if (rangeEnd < totalPages - 1) {
+        pagesToShow.push('...');
+      }
+      
+      // Always add last page if not already included
+      if (totalPages > 1) {
+        pagesToShow.push(totalPages);
+      }
+    }
+    
+    return pagesToShow;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex justify-center mt-8">
+      <div className="flex items-center gap-2">
+        {/* Previous Page Button */}
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`px-3 py-1 rounded-md ${
+            currentPage === 1 
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
+          aria-label="Previous page"
+        >
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth="2" 
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+
+        {/* Page Numbers */}
+        {generatePaginationNumbers().map((pageNum, index) => (
+          <React.Fragment key={index}>
+            {pageNum === '...' ? (
+              <span className="px-3 py-1 text-gray-500">...</span>
+            ) : (
+              <button
+                onClick={() => onPageChange(pageNum)}
+                className={`px-3 py-1 rounded-md ${
+                  currentPage === pageNum
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+                aria-label={`Go to page ${pageNum}`}
+                aria-current={currentPage === pageNum ? "page" : undefined}
+              >
+                {pageNum}
+              </button>
+            )}
+          </React.Fragment>
+        ))}
+
+        {/* Next Page Button */}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`px-3 py-1 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
+          aria-label="Next page"
+        >
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth="2" 
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };
@@ -690,8 +828,9 @@ const JobPosts = () => {
   const [skillSuggestions, setSkillSuggestions] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -701,17 +840,83 @@ const JobPosts = () => {
   });
   const [sort, setSort] = useState('');
 
-  const observer = useRef();
-  const lastJobElementRef = useRef();
+  // Page size
+  const PAGE_SIZE = 10;
 
+  // Helper function to get URL query params for pagination state persistence
+  useEffect(() => {
+    // Get initial values from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageParam = urlParams.get('page');
+    if (pageParam) {
+      const parsedPage = parseInt(pageParam, 10);
+      if (!isNaN(parsedPage) && parsedPage > 0) {
+        setCurrentPage(parsedPage);
+      }
+    }
+    
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+    
+    const jobTypeParam = urlParams.get('job_type');
+    const statusParam = urlParams.get('status');
+    const domainParam = urlParams.get('domain');
+    
+    if (jobTypeParam || statusParam || domainParam) {
+      setFilters({
+        job_type: jobTypeParam || '',
+        status: statusParam || '',
+        domain: domainParam || '',
+      });
+    }
+    
+    const sortParam = urlParams.get('sort');
+    if (sortParam) {
+      setSort(sortParam);
+    }
+  }, []);
+
+  // Update URL with current filter state
+  const updateUrlParams = useCallback(() => {
+    const params = new URLSearchParams();
+    
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    }
+    
+    if (searchQuery) {
+      params.set('search', searchQuery);
+    }
+    
+    if (filters.job_type) {
+      params.set('job_type', filters.job_type);
+    }
+    
+    if (filters.status) {
+      params.set('status', filters.status);
+    }
+    
+    if (filters.domain) {
+      params.set('domain', filters.domain);
+    }
+    
+    if (sort) {
+      params.set('sort', sort);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [currentPage, searchQuery, filters, sort]);
 
   const debouncedSetSearchQuery = useCallback(
     debounce((value) => {
       setSearchQuery(value);
+      setCurrentPage(1); // Reset to page 1 when search changes
     }, 300),
     []
   );
-
 
   const debouncedSearchSkills = useCallback(
     debounce(async (query) => {
@@ -734,11 +939,10 @@ const JobPosts = () => {
     []
   );
 
-
   const filterParams = useMemo(() => {
     const params = {
-      page,
-      page_size: 16,
+      page: currentPage,
+      page_size: PAGE_SIZE,
       search: searchQuery,
       job_type: filters.job_type,
       status: filters.status,
@@ -751,67 +955,51 @@ const JobPosts = () => {
       }
     });
     return params;
-  }, [page, searchQuery, filters.job_type, filters.status, filters.domain, sort]);
+  }, [currentPage, searchQuery, filters.job_type, filters.status, filters.domain, sort]);
 
-  // Fetch job posts
+  // Fetch job posts when filters, sort, or page changes
   useEffect(() => {
-    setJobPosts([]);
-    setPage(1);
-    setHasMore(true);
-    fetchJobPosts(true);
-  }, [searchQuery, filters.job_type, filters.status, filters.domain, sort]);
+    fetchJobPosts();
+    updateUrlParams();
+  }, [currentPage, searchQuery, filters.job_type, filters.status, filters.domain, sort]);
 
-  const fetchJobPosts = async (reset = false) => {
-    if (isLoading || (!reset && !hasMore)) return;
+  const fetchJobPosts = async () => {
     setIsLoading(true);
     try {
-      const currentPage = reset ? 1 : page;
-      const params = { ...filterParams, page: currentPage };
-
-      const response = await jobApi.getJobPosts(params);
-      const newJobs = response.results || [];
-      setJobPosts((prev) => (reset ? newJobs : [...prev, ...newJobs]));
-      setHasMore(!!response.next);
-      if (newJobs.length > 0 && response.next) {
-        setPage(currentPage + 1);
-      } else {
-        setHasMore(false);
+      const response = await jobApi.getJobPosts(filterParams);
+      
+      // Set job posts from the current page
+      setJobPosts(response.results || []);
+      
+      // Calculate total pages from count
+      const total = response.count || 0;
+      setTotalItems(total);
+      const calculatedTotalPages = Math.ceil(total / PAGE_SIZE);
+      setTotalPages(calculatedTotalPages || 1); // Ensure at least 1 page
+      
+      // Adjust current page if it's greater than total pages
+      if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error('Fetch job posts error:', error);
       setJobPosts([]);
-      setHasMore(false);
+      setTotalPages(1);
+      setTotalItems(0);
       alert('Failed to fetch job posts: ' + (error.message || 'Unknown error'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const debouncedFetch = useCallback(
-    debounce(() => {
-      if (hasMore && !isLoading) {
-        fetchJobPosts();
-      }
-    }, 300),
-    [hasMore, isLoading]
-  );
-
-
-  useEffect(() => {
-    if (!lastJobElementRef.current || !hasMore || isLoading) return;
-    observer.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          debouncedFetch();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.current.observe(lastJobElementRef.current);
-    return () => {
-      if (observer.current) observer.current.disconnect();
-    };
-  }, [jobPosts, hasMore, isLoading, debouncedFetch]);
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) {
+      return;
+    }
+    setCurrentPage(newPage);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -822,6 +1010,8 @@ const JobPosts = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
+    // Reset to page 1 when filters change
+    setCurrentPage(1);
   };
 
   const clearAllFilters = () => {
@@ -833,10 +1023,14 @@ const JobPosts = () => {
     setSort('');
     setSearchQuery('');
     debouncedSetSearchQuery('');
+    // Reset to page 1 when clearing filters
+    setCurrentPage(1);
   };
 
   const handleSortChange = (e) => {
     setSort(e.target.value);
+    // Reset to page 1 when sort changes
+    setCurrentPage(1);
   };
 
   const handleSkillSearchChange = (e) => {
@@ -868,11 +1062,11 @@ const JobPosts = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (formData.title.length < 3) {
+    if (!formData.title || formData.title.length < 3) {
       newErrors.title = 'Title must be at least 3 characters long';
     }
 
-    if (formData.description.length < 5) {
+    if (!formData.description || formData.description.length < 5) {
       newErrors.description = 'Description must be at least 5 characters long';
     }
 
@@ -886,7 +1080,7 @@ const JobPosts = () => {
       newErrors.responsibilities = 'At least one responsibility is required';
     }
 
-    if (formData.location.length < 2) {
+    if (!formData.location || formData.location.length < 2) {
       newErrors.location = 'Location must be at least 2 characters long';
     }
 
@@ -946,6 +1140,8 @@ const JobPosts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    setIsLoading(true);
     try {
       const cleanedData = {
         ...formData,
@@ -958,13 +1154,14 @@ const JobPosts = () => {
       await jobApi.createJobPost(cleanedData);
       setAddModalOpen(false);
       resetForm();
-      setPage(1);
-      setHasMore(true);
-      setJobPosts([]);
-      fetchJobPosts(true);
+      // After adding a job, refresh the list and go to first page
+      setCurrentPage(1); 
+      await fetchJobPosts();
     } catch (error) {
       console.error('Create job post error:', error);
       alert('Failed to create job post: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -972,8 +1169,12 @@ const JobPosts = () => {
     setFormData({
       title: job.title,
       description: job.description,
-      requirements: job.requirements_display.length > 0 ? job.requirements_display : [''],
-      responsibilities: job.responsibilities_display.length > 0 ? job.responsibilities_display : [''],
+      requirements: job.requirements_display && job.requirements_display.length > 0 
+        ? job.requirements_display 
+        : [''],
+      responsibilities: job.responsibilities_display && job.responsibilities_display.length > 0 
+        ? job.responsibilities_display 
+        : [''],
       location: job.location,
       job_type: job.job_type,
       employment_type: job.employment_type,
@@ -994,6 +1195,8 @@ const JobPosts = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    setIsLoading(true);
     try {
       const cleanedData = {
         ...formData,
@@ -1006,17 +1209,18 @@ const JobPosts = () => {
       await jobApi.updateJobPost(selectedJob.id, cleanedData);
       setEditModalOpen(false);
       resetForm();
-      setPage(1);
-      setHasMore(true);
-      setJobPosts([]);
-      fetchJobPosts(true);
+      // Refresh current page after editing
+      await fetchJobPosts();
     } catch (error) {
       console.error('Update job post error:', error);
       alert('Failed to update job post: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleViewJob = async (id) => {
+    setIsLoading(true);
     try {
       const data = await jobApi.getJobPost(id);
       setSelectedJob(data);
@@ -1024,20 +1228,38 @@ const JobPosts = () => {
     } catch (error) {
       console.error('View job error:', error);
       alert('Failed to fetch job details');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    setIsLoading(true);
     try {
       await jobApi.deleteJobPost(deleteId);
       setDeleteId(null);
-      setPage(1);
-      setHasMore(true);
-      setJobPosts([]);
-      fetchJobPosts(true);
+      
+      // After deleting, check if we're on the last page and it's now empty
+      const remainingItems = totalItems - 1;
+      const newTotalPages = Math.ceil(remainingItems / PAGE_SIZE);
+      
+      // If current page is higher than new total pages, go to last page
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      } else {
+        // Otherwise, just refresh current page
+        await fetchJobPosts();
+      }
+      
+      // Special case: if we deleted the last item on a page
+      if (jobPosts.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
     } catch (error) {
       console.error('Delete job error:', error);
       alert('Failed to delete job post');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1065,6 +1287,7 @@ const JobPosts = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB');
   };
@@ -1088,16 +1311,36 @@ const JobPosts = () => {
       >
         Add new post +
       </button>
+      
+      {/* Results Summary */}
+      {!isLoading && (
+        <div className="text-sm text-gray-600 mb-4">
+          {totalItems > 0 ? (
+            <p>
+              Showing {((currentPage - 1) * PAGE_SIZE) + 1} to {Math.min(currentPage * PAGE_SIZE, totalItems)} of {totalItems} job posts
+            </p>
+          ) : (
+            <p>No job posts found</p>
+          )}
+        </div>
+      )}
+      
       <JobList
         jobPosts={jobPosts}
         isLoading={isLoading}
-        hasMore={hasMore}
-        lastJobElementRef={lastJobElementRef}
         onView={handleViewJob}
         onEdit={handleEditJob}
         onDelete={setDeleteId}
         formatDate={formatDate}
       />
+      
+      {/* Pagination Component */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+      
       <JobFormModal
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}

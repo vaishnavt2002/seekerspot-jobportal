@@ -2,14 +2,16 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import debounce from "lodash/debounce";
 import { formatDistanceToNow } from "date-fns";
+import { Bookmark } from "lucide-react";
 import publicJobApi from "../../api/publicJobApi";
 
 const FindJobs = () => {
   const [jobs, setJobs] = useState([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [savedJobs, setSavedJobs] = useState({}); // Track saved job status
   const [filters, setFilters] = useState({
     search: "",
     location: "",
@@ -50,6 +52,9 @@ const FindJobs = () => {
     { value: "OTHER", label: "Other" },
   ];
 
+  // Items per page
+  const PAGE_SIZE = 12;
+
   // Restore filters from URL only on initial mount
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -60,13 +65,43 @@ const FindJobs = () => {
       employment_type: params.get("employment_type") || "",
       domain: params.get("domain") || "",
     };
+    // Also get page from URL if present
+    const urlPage = parseInt(params.get("page"), 10);
+    if (urlPage && !isNaN(urlPage) && urlPage > 0) {
+      setPage(urlPage);
+    }
     setFilters(newFilters);
     lastFiltersRef.current = newFilters;
   }, []); // Empty dependency array ensures this runs only once
 
+  // Fetch saved job status for all jobs
+  const fetchSavedJobStatus = useCallback(async (jobIds) => {
+    try {
+      const statusPromises = jobIds.map(async (jobId) => {
+        try {
+          const response = await publicJobApi.checkSavedStatus(jobId);
+          return { jobId, is_saved: response.is_saved };
+        } catch (error) {
+          console.error(`Error fetching saved status for job ${jobId}:`, error);
+          return { jobId, is_saved: false };
+        }
+      });
+
+      const results = await Promise.all(statusPromises);
+      const savedJobsMap = {};
+      results.forEach(result => {
+        savedJobsMap[result.jobId] = result.is_saved;
+      });
+      
+      setSavedJobs(savedJobsMap);
+    } catch (error) {
+      console.error("Error fetching saved job statuses:", error);
+    }
+  }, []);
+
   const fetchJobs = useCallback(
-    async (pageNum = 1, append = false) => {
-      if (isLoading || (!hasMore && pageNum !== 1) || error) {
+    async (pageNum = 1) => {
+      if (isLoading || error) {
         return;
       }
 
@@ -75,7 +110,7 @@ const FindJobs = () => {
       try {
         const params = {
           page: pageNum,
-          page_size: 12,
+          page_size: PAGE_SIZE,
           ...(filters.search && { search: filters.search }),
           ...(filters.location && { location: filters.location }),
           ...(filters.job_type && { job_type: filters.job_type }),
@@ -87,17 +122,25 @@ const FindJobs = () => {
         const response = await publicJobApi.getPublicJobPosts(params);
         const newJobs = response.results || [];
 
-        setJobs((prev) => (append ? [...prev, ...newJobs] : newJobs));
-        const hasMoreJobs = !!response.next && newJobs.length === params.page_size;
-        setHasMore(hasMoreJobs);
-        setPage(pageNum);
+        setJobs(newJobs);
+        
+        // Calculate total pages from count
+        const total = response.count || 0;
+        const calculatedTotalPages = Math.ceil(total / PAGE_SIZE);
+        setTotalPages(calculatedTotalPages || 1); // Ensure at least 1 page
+        
+        // Fetch saved statuses for new jobs
+        const newJobIds = newJobs.map(job => job.id);
+        if (newJobIds.length > 0) {
+          fetchSavedJobStatus(newJobIds);
+        }
+        
       } catch (err) {
         const errorMessage =
           err.status === "network_error"
             ? "Server is unreachable. Please check your connection."
             : err.message || "Failed to load jobs. Please try again later.";
         setError(errorMessage);
-        setHasMore(false);
       } finally {
         setIsLoading(false);
         if (pageNum === 1) {
@@ -105,8 +148,37 @@ const FindJobs = () => {
         }
       }
     },
-    [filters, isLoading, hasMore, error]
+    [filters, isLoading, error, fetchSavedJobStatus]
   );
+
+  // Toggle job saved status
+  const toggleSaveJob = async (e, jobId) => {
+    e.stopPropagation(); // Prevent job card click event
+    
+    const isSaved = savedJobs[jobId];
+    
+    try {
+      if (isSaved) {
+        // Unsave job
+        await publicJobApi.unsaveJob(jobId);
+        setSavedJobs(prev => ({
+          ...prev,
+          [jobId]: false
+        }));
+        console.log("Job removed from saved list");
+      } else {
+        // Save job
+        await publicJobApi.saveJob(jobId);
+        setSavedJobs(prev => ({
+          ...prev,
+          [jobId]: true
+        }));
+        console.log("Job saved successfully");
+      }
+    } catch (error) {
+      console.error("Error toggling saved status:", error);
+    }
+  };
 
   const debouncedFetchJobs = useCallback(
     debounce((filtersToUse) => {
@@ -120,51 +192,50 @@ const FindJobs = () => {
   useEffect(() => {
     if (!isInitialFetchDone.current) {
       console.log("Triggering initial fetch");
-      fetchJobs(1);
+      fetchJobs(page);
     }
-  }, [fetchJobs]);
+  }, [fetchJobs, page]);
 
   // Handle filter changes and update URL
   useEffect(() => {
     if (isInitialFetchDone.current && JSON.stringify(filters) !== JSON.stringify(lastFiltersRef.current)) {
+      // Reset to page 1 when filters change
+      setPage(1);
       debouncedFetchJobs(filters);
-      const queryParams = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) queryParams.set(key, value);
-      });
-      navigate(`/find-jobs?${queryParams.toString()}`, { replace: true });
+      updateURLWithFilters(filters, 1); // Reset to page 1 in URL when filters change
       lastFiltersRef.current = { ...filters };
     }
     return () => debouncedFetchJobs.cancel();
   }, [filters, debouncedFetchJobs, navigate]);
 
-  const debouncedHandleScroll = useCallback(
-    debounce(() => {
-      if (document.documentElement.offsetHeight <= window.innerHeight) {
-        console.log("Page too short, skipping scroll fetch");
-        return;
-      }
-      if (
-        window.innerHeight + document.documentElement.scrollTop >=
-          document.documentElement.offsetHeight - 100 &&
-        hasMore &&
-        !isLoading &&
-        !error
-      ) {
-        console.log("Fetching more jobs, page:", page + 1);
-        fetchJobs(page + 1, true);
-      }
-    }, 500),
-    [hasMore, isLoading, error, page, fetchJobs]
-  );
+  // Update URL with current filters and page
+  const updateURLWithFilters = (currentFilters, currentPage) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(currentFilters).forEach(([key, value]) => {
+      if (value) queryParams.set(key, value);
+    });
+    
+    // Add page to URL params if not page 1
+    if (currentPage > 1) {
+      queryParams.set('page', currentPage.toString());
+    }
+    
+    navigate(`/find-jobs?${queryParams.toString()}`, { replace: true });
+  };
 
-  useEffect(() => {
-    window.addEventListener("scroll", debouncedHandleScroll);
-    return () => {
-      window.removeEventListener("scroll", debouncedHandleScroll);
-      debouncedHandleScroll.cancel();
-    };
-  }, [debouncedHandleScroll]);
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) {
+      return;
+    }
+    
+    setPage(newPage);
+    fetchJobs(newPage);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Update URL with the new page
+    updateURLWithFilters(filters, newPage);
+  };
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -186,9 +257,6 @@ const FindJobs = () => {
     const { name, value } = e.target;
     console.log(`Filter changed: ${name}=${value}`);
     setFilters((prev) => ({ ...prev, [name]: value }));
-    setPage(1);
-    setHasMore(true);
-    setError(null);
   };
 
   const clearFilters = () => {
@@ -201,7 +269,6 @@ const FindJobs = () => {
       domain: "",
     });
     setPage(1);
-    setHasMore(true);
     setError(null);
     setShowFilters(false);
   };
@@ -210,7 +277,6 @@ const FindJobs = () => {
     console.log(`Removing filter: ${filterKey}`);
     setFilters((prev) => ({ ...prev, [filterKey]: "" }));
     setPage(1);
-    setHasMore(true);
     setError(null);
   };
 
@@ -224,6 +290,8 @@ const FindJobs = () => {
     Object.entries(filters).forEach(([key, value]) => {
       if (value) queryParams.set(key, value);
     });
+    // Include current page in return URL for better navigation
+    queryParams.set('fromPage', page.toString());
     console.log(`Navigating to job/${jobId} with filters:`, queryParams.toString());
     navigate(`/job/${jobId}?${queryParams.toString()}`);
   };
@@ -242,6 +310,52 @@ const FindJobs = () => {
     const domain = DOMAIN_CHOICES.find((d) => d.value === filters.domain);
     selectedFilters.push({ key: "domain", label: domain.label, value: filters.domain });
   }
+
+  // Function to generate pagination numbers intelligently
+  const generatePaginationNumbers = () => {
+    // Always show first and last page
+    // Show 2 pages before and after current page
+    // Use ellipsis (...) to represent skipped pages
+    
+    const pagesToShow = [];
+    const maxVisiblePages = 7; // Maximum number of page numbers to show
+    
+    if (totalPages <= maxVisiblePages) {
+      // If total pages is small, show all pages
+      for (let i = 1; i <= totalPages; i++) {
+        pagesToShow.push(i);
+      }
+    } else {
+      // Always add page 1
+      pagesToShow.push(1);
+      
+      // Calculate range around current page
+      const rangeStart = Math.max(2, page - 2);
+      const rangeEnd = Math.min(totalPages - 1, page + 2);
+      
+      // Add ellipsis if needed before current range
+      if (rangeStart > 2) {
+        pagesToShow.push('...');
+      }
+      
+      // Add pages around current page
+      for (let i = rangeStart; i <= rangeEnd; i++) {
+        pagesToShow.push(i);
+      }
+      
+      // Add ellipsis if needed after current range
+      if (rangeEnd < totalPages - 1) {
+        pagesToShow.push('...');
+      }
+      
+      // Always add last page if not already included
+      if (totalPages > 1) {
+        pagesToShow.push(totalPages);
+      }
+    }
+    
+    return pagesToShow;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-10">
@@ -432,6 +546,14 @@ const FindJobs = () => {
         {/* Breadcrumb */}
         <p className="text-sm text-gray-600 mb-4">Home / Find Jobs</p>
 
+        {/* Results Summary */}
+        {!isLoading && !error && (
+          <div className="text-sm text-gray-600 mb-4">
+            Showing page {page} of {totalPages} 
+            {totalPages > 0 && ` (${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, (totalPages - 1) * PAGE_SIZE + jobs.length)} jobs)`}
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="text-center py-6 text-red-600">
@@ -444,33 +566,52 @@ const FindJobs = () => {
           {jobs.map((job) => (
             <div
               key={job.id}
-              onClick={() => handleJobClick(job.id)}
-              className="bg-white p-4 rounded-lg shadow hover:shadow-md transition duration-300 cursor-pointer"
+              className="bg-white p-4 rounded-lg shadow hover:shadow-md transition duration-300 relative"
             >
-              <div className="flex items-center gap-4 mb-4">
-                <img
-                  src={`http://localhost:8000${job.job_provider.company_logo}`}
-                  alt={`${job.job_provider.company_name} logo`}
-                  className="h-10 w-10 object-contain rounded"
+              {/* Save Button */}
+              <button
+                onClick={(e) => toggleSaveJob(e, job.id)}
+                className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 transition-colors z-10"
+                title={savedJobs[job.id] ? "Remove from saved jobs" : "Save job"}
+              >
+                <Bookmark
+                  size={20}
+                  className={`${
+                    savedJobs[job.id] ? "fill-blue-500 text-blue-500" : "text-gray-400"
+                  }`}
                 />
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">{job.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    {job.job_provider.company_name} - {job.location}
-                  </p>
+              </button>
+
+              {/* Job Card Content (clickable) */}
+              <div 
+                onClick={() => handleJobClick(job.id)}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-4 mb-4">
+                  <img
+                    src={`http://localhost:8000${job.job_provider.company_logo}`}
+                    alt={`${job.job_provider.company_name} logo`}
+                    className="h-10 w-10 object-contain rounded"
+                  />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">{job.title}</h3>
+                    <p className="text-sm text-gray-500">
+                      {job.job_provider.company_name} - {job.location}
+                    </p>
+                  </div>
                 </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
+                    {job.employment_type.replace("_", " ").toLowerCase()}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {formatSalary(job.min_salary, job.max_salary)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Posted {formatDistanceToNow(new Date(job.created_at))} ago
+                </p>
               </div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
-                  {job.employment_type.replace("_", " ").toLowerCase()}
-                </span>
-                <span className="text-sm text-gray-600">
-                  {formatSalary(job.min_salary, job.max_salary)}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400">
-                Posted {formatDistanceToNow(new Date(job.created_at))} ago
-              </p>
             </div>
           ))}
         </div>
@@ -478,13 +619,92 @@ const FindJobs = () => {
         {isLoading && (
           <div className="text-center py-6">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-600">Loading more jobs...</span>
+            <span className="ml-2 text-gray-600">Loading jobs...</span>
           </div>
         )}
 
         {!isLoading && jobs.length === 0 && !error && (
           <div className="text-center py-6">
             <p className="text-gray-600">No jobs found matching your criteria.</p>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && !error && jobs.length > 0 && totalPages > 1 && (
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center gap-2">
+              {/* Previous Page Button */}
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                className={`px-3 py-1 rounded-md ${
+                  page === 1 
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+
+              {/* Page Numbers */}
+              {generatePaginationNumbers().map((pageNum, index) => (
+                <React.Fragment key={index}>
+                  {pageNum === '...' ? (
+                    <span className="px-3 py-1 text-gray-500">...</span>
+                  ) : (
+                    <button
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 rounded-md ${
+                        page === pageNum
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )}
+                </React.Fragment>
+              ))}
+
+              {/* Next Page Button */}
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                className={`px-3 py-1 rounded-md ${
+                  page === totalPages
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </div>

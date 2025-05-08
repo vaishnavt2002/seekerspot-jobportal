@@ -16,82 +16,156 @@ from django.core.paginator import Paginator
 import logging
 logger = logging.getLogger(__name__)
 
+from django.core.paginator import Paginator
+from django.db.models import Q
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import logging
+
+# Configure logger for this module
+logger = logging.getLogger(__name__)
+
+
 class JobPostView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-
+    
+    def validate_string_param(self, param, max_length=255):
+        """Validate and sanitize string parameters"""
+        if param is None:
+            return ""
+        # Trim whitespace and limit length
+        return str(param).strip()[:max_length]
+    
+    def validate_enum_param(self, param, valid_values, default=""):
+        """Validate parameters against a list of valid values"""
+        if param is None or param not in valid_values:
+            return default
+        return param
+    
     def get(self, request):
         try:
+            # Validate page parameter
             try:
-                page = int(request.query_params.get('page', 1))
-                if page < 1:
-                    raise ValueError
-            except ValueError:
+                page = request.query_params.get('page', '1')
+                # Ensure page is numeric and positive
+                if not page.isdigit() or int(page) < 1:
+                    return Response(
+                        {'error': 'Invalid page number. Must be a positive integer.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                page = int(page)
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    f"Invalid page parameter: {request.query_params.get('page', '1')}, Error: {str(e)}"
+                )
                 return Response(
-                    {'error': 'Invalid page number'},
+                    {'error': 'Invalid page number format'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            
+            # Validate page_size parameter
             try:
-                page_size = int(request.query_params.get('page_size', 16))
-                if page_size < 1:
-                    raise ValueError
-            except ValueError:
+                page_size = request.query_params.get('page_size', '16')
+                # Ensure page_size is numeric and positive
+                if not page_size.isdigit() or int(page_size) < 1 or int(page_size) > 100:
+                    return Response(
+                        {'error': 'Invalid page size. Must be a positive integer not exceeding 100.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                page_size = int(page_size)
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    f"Invalid page_size parameter: {request.query_params.get('page_size', '16')}, Error: {str(e)}"
+                )
                 return Response(
-                    {'error': 'Invalid page size'},
+                    {'error': 'Invalid page size format'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            search = request.query_params.get('search', '')
-            job_type = request.query_params.get('job_type', '')
-            status_param = request.query_params.get('status', '')
-            domain = request.query_params.get('domain', '')
-            sort = request.query_params.get('sort', '')
-
+            
+            # Validate and sanitize text search parameters
+            search = self.validate_string_param(request.query_params.get('search', ''), max_length=100)
+            
+            # Get valid values from models (assuming these are choices in your models)
+            # Replace these with your actual model choices
+            valid_job_types = ['full_time', 'part_time', 'contract', 'internship']  # Example
+            valid_statuses = ['active', 'pending', 'closed', 'draft']  # Example
+            valid_domains = ['tech', 'finance', 'healthcare', 'education']  # Example
             valid_sorts = ['', 'created_at', '-created_at', 'title', '-title']
-            if sort not in valid_sorts:
-                return Response(
-                    {'error': 'Invalid sort parameter'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
+            
+            # Validate enum parameters
+            job_type = self.validate_enum_param(
+                request.query_params.get('job_type', ''),
+                valid_job_types
+            )
+            status_param = self.validate_enum_param(
+                request.query_params.get('status', ''),
+                valid_statuses
+            )
+            domain = self.validate_enum_param(
+                request.query_params.get('domain', ''),
+                valid_domains
+            )
+            sort = self.validate_enum_param(
+                request.query_params.get('sort', ''),
+                valid_sorts
+            )
+            
+            # Check job provider profile
             try:
                 job_provider = request.user.job_provider_profile
-            except AttributeError:
+            except AttributeError as e:
+                logger.warning(
+                    f"User {request.user.username} (ID: {request.user.id}) attempted to access JobPostView without a job provider profile"
+                )
                 return Response(
                     {'error': 'User is not associated with a job provider profile'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-
+            
+            # Build query with validated parameters
             job_posts = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
             )
-
+            
+            # Apply filters with sanitized parameters
             if search:
                 job_posts = job_posts.filter(
                     Q(title__icontains=search) |
                     Q(description__icontains=search) |
                     Q(location__icontains=search)
                 )
-
+            
             if job_type:
                 job_posts = job_posts.filter(job_type=job_type)
+            
             if status_param:
                 job_posts = job_posts.filter(status=status_param)
+            
             if domain:
                 job_posts = job_posts.filter(domain=domain)
-
+            
             if sort:
                 job_posts = job_posts.order_by(sort)
-
+            
+            # Pagination
             paginator = Paginator(job_posts, page_size)
             try:
                 paginated_jobs = paginator.page(page)
-            except:
+            except Exception as e:
+                logger.warning(
+                    f"Page {page} not found for job provider {job_provider.id}, Error: {str(e)}"
+                )
                 return Response(
                     {'error': 'Page not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
-
+            
+            # Serialize and return response
             serializer = JobPostSerializer(paginated_jobs, many=True)
             return Response({
                 'results': serializer.data,
@@ -99,23 +173,47 @@ class JobPostView(APIView):
                 'previous': None if not paginated_jobs.has_previous() else page - 1,
                 'count': paginator.count,
             }, status=status.HTTP_200_OK)
-
+        
         except Exception as e:
+            # Log the full exception details with traceback
+            logger.error(
+                f"Unexpected error in JobPostView.get: {str(e)}",
+                exc_info=True  # This includes traceback information
+            )
             return Response(
-                {'error': f'Server error: {str(e)}'},
+                {'error': 'Server error occurred'},  # Don't expose error details in production
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
+    
     def post(self, request):
         try:
-            serializer = JobPostSerializer(data=request.data, context={'request': request})
+            # Sanitize request data before validation
+            sanitized_data = {}
+            for key, value in request.data.items():
+                if isinstance(value, str):
+                    sanitized_data[key] = self.validate_string_param(value)
+                else:
+                    sanitized_data[key] = value
+            
+            serializer = JobPostSerializer(data=sanitized_data, context={'request': request})
             if serializer.is_valid():
-                serializer.save(job_provider=request.user.job_provider_profile)
+                job_post = serializer.save(job_provider=request.user.job_provider_profile)
+                logger.info(f"New job post created: ID {job_post.id} by provider {request.user.job_provider_profile.id}")
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Log validation errors
+            logger.warning(
+                f"Validation error in JobPostView.post for user {request.user.id}: {serializer.errors}"
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e:
+            logger.error(
+                f"Unexpected error in JobPostView.post: {str(e)}",
+                exc_info=True
+            )
             return Response(
-                {'error': f'Server error: {str(e)}'},
+                {'error': 'Server error occurred'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 class JobPostDetailView(APIView):
