@@ -316,7 +316,7 @@ const AppliedJobs = () => {
                             ) : (
                               <div>
                                 <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">
-                                  {application.interviews.some(i => i.status === 'CANCELLED') ? 'Interview cancelled' : 'No upcoming interview'}
+                                  No upcoming interview
                                 </span>
                               </div>
                             )
@@ -597,10 +597,7 @@ const AppliedJobs = () => {
           <div className="text-sm font-medium text-gray-500">Pending</div>
           <div className="mt-1 text-2xl font-semibold text-yellow-600">{stats.pending}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm font-medium text-gray-500">Upcoming Interviews</div>
-          <div className="mt-1 text-2xl font-semibold text-green-600">{stats.upcomingInterviews}</div>
-        </div>
+        
       </div>
 
       {/* Filters Section */}

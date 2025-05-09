@@ -55,11 +55,13 @@ class InterviewScheduleCreateView(APIView):
             job_provider = JobProvider.objects.get(user=request.user)
             application = get_object_or_404(JobApplication, pk=request.data.get('application'))
             if application.jobpost.job_provider != job_provider:
+                logger.warning("User %s attempted to schedule interview for application %s without permission",request.user.username, application.id)
                 return Response(
                     {"error": "You do not have permission to schedule this interview."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             if application.status != 'SHORTLISTED':
+                logger.warning("Attempted to schedule interview for non-shortlisted application %s (status: %s)",application.id, application.status)
                 return Response(
                     {"error": "Interviews can only be scheduled for shortlisted applicants."},
                     status=status.HTTP_400_BAD_REQUEST
@@ -68,11 +70,19 @@ class InterviewScheduleCreateView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            logger.warning("Invalid interview schedule data: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except JobProvider.DoesNotExist:
+            logger.warning("Job provider profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error("Error creating interview schedule: %s", str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class InterviewScheduleUpdateView(APIView):
@@ -83,6 +93,7 @@ class InterviewScheduleUpdateView(APIView):
             job_provider = JobProvider.objects.get(user=request.user)
             interview = get_object_or_404(InterviewSchedule, pk=pk)
             if interview.application.jobpost.job_provider != job_provider:
+                logger.warning("User %s attempted to update interview %s without permission",request.user.username, pk)
                 return Response(
                     {"error": "You do not have permission to update this interview."},
                     status=status.HTTP_403_FORBIDDEN
@@ -90,13 +101,23 @@ class InterviewScheduleUpdateView(APIView):
             serializer = InterviewScheduleSerializer(interview, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                logger.info("Interview %s successfully updated by user %s", pk, request.user.username)
                 return Response(serializer.data)
+            logger.warning("Invalid interview update data: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except JobProvider.DoesNotExist:
+            logger.warning("Job provider profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+        except Exception as e:
+            logger.error("Error updating interview schedule %s: %s", pk, str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class InterviewScheduleCancelView(APIView):
     permission_classes = [IsAuthenticated]
@@ -106,23 +127,33 @@ class InterviewScheduleCancelView(APIView):
             job_provider = JobProvider.objects.get(user=request.user)
             interview = get_object_or_404(InterviewSchedule, pk=pk)
             if interview.application.jobpost.job_provider != job_provider:
+                logger.warning("User %s attempted to cancel interview %s without permission",request.user.username, pk)
                 return Response(
                     {"error": "You do not have permission to cancel this interview."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             if interview.status == 'CANCELLED':
+                logger.warning("Attempted to cancel already cancelled interview %s", pk)
                 return Response(
                     {"error": "Interview is already cancelled."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             interview.status = 'CANCELLED'
             interview.save()
+            logger.info("Interview %s successfully cancelled", pk)
             serializer = InterviewScheduleSerializer(interview)
             return Response(serializer.data)
         except JobProvider.DoesNotExist:
+            logger.warning("Job provider profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error("Error cancelling interview schedule %s: %s", pk, str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class InterviewScheduleCompleteView(APIView):
@@ -133,11 +164,13 @@ class InterviewScheduleCompleteView(APIView):
             job_provider = JobProvider.objects.get(user=request.user)
             interview = get_object_or_404(InterviewSchedule, pk=pk)
             if interview.application.jobpost.job_provider != job_provider:
+                logger.warning("User %s attempted to complete interview %s without permission",request.user.username, pk)
                 return Response(
                     {"error": "You do not have permission to complete this interview."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             if interview.status != 'SCHEDULED' and interview.status != 'RESCHEDULED':
+                logger.warning("Attempted to complete interview %s with invalid status: %s", pk, interview.status)
                 return Response(
                     {"error": "Only scheduled or rescheduled interviews can be marked as completed."},
                     status=status.HTTP_400_BAD_REQUEST
@@ -146,11 +179,19 @@ class InterviewScheduleCompleteView(APIView):
             interview.completed_at = timezone.now()
             interview.save()
             serializer = InterviewScheduleSerializer(interview)
+            logger.info("Interview %s successfully marked as completed", pk)
             return Response(serializer.data)
         except JobProvider.DoesNotExist:
+            logger.warning("Job provider profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job provider profile not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error("Error completing interview schedule %s: %s", pk, str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class JobSeekerInterviewsView(APIView):
@@ -162,11 +203,19 @@ class JobSeekerInterviewsView(APIView):
             applications = JobApplication.objects.filter(job_seeker=job_seeker)
             interviews = InterviewSchedule.objects.filter(application__in=applications)
             serializer = InterviewScheduleSerializer(interviews, many=True)
+            logger.info("Successfully returned %d interviews for job seeker %s", len(serializer.data), request.user.username)
             return Response(serializer.data)
         except JobSeeker.DoesNotExist:
+            logger.warning("Job seeker profile not found for user %s", request.user.username)
             return Response(
                 {"error": "Job seeker profile not found."},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error("Error fetching job seeker interviews: %s", str(e), exc_info=True)
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
