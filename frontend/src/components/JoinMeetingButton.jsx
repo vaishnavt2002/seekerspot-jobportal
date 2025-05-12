@@ -27,7 +27,6 @@ const JoinMeetingButton = ({
     );
   }
 
-  // Determine the URL based on the user type
   const meetingUrl = `/meet/${meetingId}?type=${interviewType}`;
   
   return (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Bell} from "lucide-react";
 import seekerSpotLogo from '../assets/SeekerSpot.svg';
 import SeekersSpotLogo from './SeekerSpot';
 import userIcon from '../assets/user_3917688.png';
@@ -38,6 +38,8 @@ export default function Navbar() {
         {isAuthenticated ?<div className="hover:text-blue-600" onClick={handleLogout}>Logout</div>:<><Link to="/login" className="hover:text-blue-600">Login</Link><Link to="/signup" className="hover:text-blue-600">Sign Up</Link></>}
         
         {isAuthenticated&&<Link to='/profile'><div className=""><img src={userIcon} alt="User Icon" className="w-6 h-6" /></div></Link>}
+        {isAuthenticated&&<Link to='/profile'><Bell/></Link>}
+
         </div>
 
       <div className="md:hidden">

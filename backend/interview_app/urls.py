@@ -9,7 +9,5 @@ urlpatterns = [
     path('interviews/<int:pk>/cancel/', InterviewScheduleCancelView.as_view(), name='interview-cancel'),
     path('interviews/<int:pk>/complete/', InterviewScheduleCompleteView.as_view(), name='interview-complete'),
     path('job-seeker/interviews/', JobSeekerInterviewsView.as_view(), name='job-seeker-interviews'),
-    
-    # New meeting endpoints
     path('interview/meetings/<str:meeting_id>/', MeetingDetailView.as_view(), name='meeting-detail'),
 ]

@@ -174,13 +174,11 @@ class InterviewConsumer(AsyncWebsocketConsumer):
     async def ice_candidate(self, event):
         await self.send(text_data=json.dumps(event))
 
-    # Database access methods
     @database_sync_to_async
     def validate_meeting_access(self, meeting_id, user_id, user_type):
         logger.debug(f"Validating meeting access: User {user_id} ({user_type}) " 
                     f"for meeting {meeting_id}")
         
-        # For local testing - add a development bypass flag
         if settings.DEBUG and hasattr(settings, 'ALLOW_ALL_MEETING_ACCESS') and settings.ALLOW_ALL_MEETING_ACCESS:
             logger.warning(f"DEBUG MODE: Allowing all meeting access for user {user_id}")
             return True

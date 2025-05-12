@@ -6,9 +6,9 @@ class WebSocketService {
       this.onMessageCallback = null;
       this.reconnectAttempts = 0;
       this.maxReconnectAttempts = 5;
-      this.reconnectDelay = 5000; // 5 seconds
-      this.isConnecting = false; // Prevent duplicate connections
-      this.pendingMessages = []; // Store messages that failed to send
+      this.reconnectDelay = 5000;
+      this.isConnecting = false; 
+      this.pendingMessages = [];
     }
   
     async connect() {
@@ -23,7 +23,6 @@ class WebSocketService {
       this.disconnect();
       
       try {
-        // Make a request to ensure cookies are set
         await axios.get(`${import.meta.env.VITE_API_URL}/community/communities/`, {
           withCredentials: true
         });
@@ -41,12 +40,10 @@ class WebSocketService {
           this.reconnectAttempts = 0;
           this.isConnecting = false;
           
-          // Try to send any pending messages
           if (this.pendingMessages.length > 0) {
             console.log(`Attempting to send ${this.pendingMessages.length} pending messages`);
             [...this.pendingMessages].forEach(message => {
               if (this.sendMessage(message)) {
-                // Remove from pending if sent successfully
                 this.pendingMessages = this.pendingMessages.filter(m => m !== message);
               }
             });
@@ -92,7 +89,6 @@ class WebSocketService {
       console.log('Sending message:', data);
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         console.error('Cannot send message: WebSocket not connected');
-        // Store message to send later
         this.pendingMessages.push(data);
         return false;
       }
@@ -102,7 +98,6 @@ class WebSocketService {
         return true;
       } catch (error) {
         console.error('Error sending message:', error);
-        // Store message to try again
         this.pendingMessages.push(data);
         return false;
       }
@@ -137,7 +132,6 @@ class WebSocketService {
               return false;
           }
           
-          // Send through WebSocket
           this.socket.send(JSON.stringify({
               type: 'mark_read',
               community_id: communityId,

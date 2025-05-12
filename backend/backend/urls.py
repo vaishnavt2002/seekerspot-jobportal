@@ -27,5 +27,7 @@ urlpatterns = [
     path('api/',include('interview_app.urls')),
     path('api/home/',include('home_feed.urls')),
     path('api/community/', include('community_app.urls')),
+    path('api/', include('notification_app.urls')),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT )

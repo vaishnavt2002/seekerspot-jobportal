@@ -15,6 +15,7 @@ from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
 import community_app.routing
 import interview_app.routing
+import notification_app.routing
 
 # Create the ASGI application
 application = ProtocolTypeRouter({
@@ -23,7 +24,8 @@ application = ProtocolTypeRouter({
         AuthMiddlewareStack(
             URLRouter(
                 community_app.routing.websocket_urlpatterns + 
-                interview_app.routing.websocket_urlpatterns
+                interview_app.routing.websocket_urlpatterns +
+                notification_app.routing.websocket_urlpatterns
             )
         )
     ),

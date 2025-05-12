@@ -7,9 +7,9 @@ class InterviewWebSocketService {
       this.onMessageCallback = null;
       this.reconnectAttempts = 0;
       this.maxReconnectAttempts = 5;
-      this.reconnectDelay = 5000; // 5 seconds
-      this.isConnecting = false; // Prevent duplicate connections
-      this.pendingMessages = []; // Store messages that failed to send
+      this.reconnectDelay = 5000; 
+      this.isConnecting = false; 
+      this.pendingMessages = []; 
       this.retryInterval = null;
       this.connectionTimeout = null;
       
@@ -24,13 +24,11 @@ class InterviewWebSocketService {
     }
   
     async connect() {
-      // Prevent multiple connection attempts
       if (this.isConnecting) {
         this.debug('Already connecting, skipping connect');
         return;
       }
       
-      // Don't reconnect if already connected
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
         this.debug('Already connected, skipping connect');
         return;
@@ -39,11 +37,9 @@ class InterviewWebSocketService {
       this.isConnecting = true;
       this.debug('Attempting to connect WebSocket');
       
-      // Clear any existing socket
       this.disconnect();
       
       try {
-        // Make a request to ensure cookies are set
         this.debug('Making auth request to ensure cookies are set');
         await axios.get(`${import.meta.env.VITE_API_URL}/auth/user/`, {
           withCredentials: true
@@ -57,28 +53,24 @@ class InterviewWebSocketService {
         
         this.socket = new WebSocket(wsUrl);
         
-        // Add event handlers with proper context binding
         this.socket.onopen = this.handleOpen.bind(this);
         this.socket.onmessage = this.handleMessage.bind(this);
         this.socket.onclose = this.handleClose.bind(this);
         this.socket.onerror = this.handleError.bind(this);
         
-        // Set a connection timeout
         this.connectionTimeout = setTimeout(() => {
           if (this.socket && this.socket.readyState !== WebSocket.OPEN) {
             this.debug('Connection timeout - closing socket');
             this.socket.close();
             this.isConnecting = false;
             
-            // Try to reconnect
             this.scheduleReconnect();
           }
-        }, 10000); // 10 second timeout
+        }, 10000); 
       } catch (error) {
         console.error('Failed to prepare WebSocket connection:', error);
         this.isConnecting = false;
         
-        // Try to reconnect after a delay
         this.scheduleReconnect();
       }
     }
@@ -105,7 +97,6 @@ class InterviewWebSocketService {
         this.connectionTimeout = null;
       }
       
-      // Try to send any pending messages
       this.processPendingMessages();
     }
     
@@ -146,7 +137,6 @@ class InterviewWebSocketService {
       this.debug('WebSocket error occurred', error);
       this.isConnecting = false;
       
-      // Clear connection timeout if it exists
       if (this.connectionTimeout) {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
@@ -169,14 +159,11 @@ class InterviewWebSocketService {
 sendMessage(data) {
   this.debug('Sending message:', data);
   
-  // Check if socket exists and is open
   if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
     console.warn('Cannot send message: WebSocket not connected', this.getStatus());
     
-    // Store message to send later
     this.pendingMessages.push(data);
     
-    // Try to connect if not already connecting
     if (!this.isConnecting && (!this.socket || this.socket.readyState === WebSocket.CLOSED)) {
       this.connect();
     }
@@ -184,18 +171,15 @@ sendMessage(data) {
   }
 
   try {
-    // Ensure targetUserId is set for messages that need it
     if (data.userId && !data.targetUserId && 
         (data.type === 'offer' || data.type === 'answer' || data.type === 'ice_candidate')) {
       this.debug('Warning: Message missing targetUserId field');
-      // Don't modify the message, just log the warning
     }
     
     this.socket.send(JSON.stringify(data));
     return true;
   } catch (error) {
     console.error('Error sending message:', error);
-    // Store message to try again
     this.pendingMessages.push(data);
     return false;
   }
@@ -210,13 +194,11 @@ sendMessage(data) {
     }
   
     disconnect() {
-      // Clear any retry attempts
       if (this.retryInterval) {
         clearInterval(this.retryInterval);
         this.retryInterval = null;
       }
       
-      // Clear connection timeout
       if (this.connectionTimeout) {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
@@ -228,7 +210,6 @@ sendMessage(data) {
           if (this.socket.readyState === WebSocket.OPEN ||
               this.socket.readyState === WebSocket.CONNECTING) {
             this.debug('Disconnecting WebSocket');
-            // Use 1000 code to indicate normal closure
             this.socket.close(1000, 'Normal closure');
           }
         } catch (error) {
@@ -251,5 +232,4 @@ sendMessage(data) {
     }
 }
   
-// Export as singleton instance
 export default new InterviewWebSocketService();

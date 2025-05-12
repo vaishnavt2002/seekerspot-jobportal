@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'home_feed',
     'channels',
     'community_app',
+    'notification_app'
     ]
 # Channels settings
 ASGI_APPLICATION = 'backend.asgi.application'
@@ -225,31 +226,27 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(LOGS_DIR, 'api.log'),
-            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
             'formatter': 'verbose',
         },
     },
     'loggers': {
-        # Your application loggers
-        'backend': {  # Replace with your Django app name
+        'backend': {  
             'handlers': ['file'],
             'level': 'INFO',
             'propagate': False,
         },
-        # Request/response logging
         'django.request': {
             'handlers': ['file'],
             'level': 'INFO',
             'propagate': False,
         },
-        # Silence Django DB query logging
         'django.db.backends': {
-            'handlers': [],  # Empty list = no handlers = no logging
+            'handlers': [],
             'propagate': False,
         },
     },
-    # Root logger
     'root': {
         'handlers': ['file'],
         'level': 'WARNING',

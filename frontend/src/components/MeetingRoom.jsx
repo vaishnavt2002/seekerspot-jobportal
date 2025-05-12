@@ -409,18 +409,16 @@ const MeetingRoom = () => {
               ...message.userInfo
             });
             
-            // Only the initiator (job provider) should create and send an offer
             if (isInitiatorRef.current) {
               try {
-                // Close any existing connection before creating a new one
                 if (peerConnectionRef.current) {
                   cleanupPeer();
                 }
                 
-                // Create new peer connection for the offer
+                
                 const peerConnection = await createPeerConnection();
                 
-                // Add a longer delay to ensure tracks are properly added
+               
                 setTimeout(async () => {
                   try {
                     if (peerConnection.signalingState !== 'closed') {
@@ -450,7 +448,6 @@ const MeetingRoom = () => {
               }
             }
             
-            // Ensure local video is still properly displayed
             setTimeout(() => {
               if (localVideoRef.current && localStream) {
                 localVideoRef.current.srcObject = localStream;
@@ -516,7 +513,7 @@ const MeetingRoom = () => {
         case 'answer':
           if (message.targetUserId === user?.id && peerConnectionRef.current) {
             try {
-              // Store the peer's name if available
+      
               if (message.userName) {
                 setPeerInfo(prev => ({
                   ...prev,
@@ -525,13 +522,13 @@ const MeetingRoom = () => {
                 }));
               }
               
-              // Only set remote description if we're in the right state
+  
               if (peerConnectionRef.current.signalingState === 'have-local-offer') {
                 await peerConnectionRef.current.setRemoteDescription(
                   new RTCSessionDescription(message.answer)
                 );
                 
-                // Ensure local video is still properly displayed
+             
                 setTimeout(() => {
                   if (localVideoRef.current && localStream) {
                     localVideoRef.current.srcObject = localStream;
@@ -655,21 +652,15 @@ const MeetingRoom = () => {
     }
   };
   
-  // End the meeting
   const endMeeting = () => {
-    // Set the meeting ended state to true to show the message
     setMeetingEnded(true);
     
-    // Clean up the meeting
     cleanupMeeting();
     
-    // Close the tab after 5 seconds
     setTimeout(() => {
-      // Close the tab
       window.close();
       
-      // If window.close() doesn't work (which is common in many browsers),
-      // navigate back
+      
       navigate(-1);
     }, 5000);
   };
@@ -697,12 +688,10 @@ const MeetingRoom = () => {
     }
   };
   
-  // Force reconnection of signaling
   const reconnectSignaling = async () => {
     InterviewWebSocketService.disconnect();
     await InterviewWebSocketService.connect();
     
-    // Re-join the room after reconnection
     setTimeout(() => {
       if (InterviewWebSocketService.getStatus() === 'CONNECTED' && user?.id) {
         InterviewWebSocketService.sendMessage({
@@ -716,7 +705,6 @@ const MeetingRoom = () => {
     }, 1000);
   };
   
-  // Restart peer connection
   const restartPeerConnection = async () => {
     cleanupPeer();
     
@@ -811,7 +799,7 @@ const MeetingRoom = () => {
       
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Video area - made flex-1 to take remaining space */}
+        {/* Video area  */}
         <div className={`flex-1 bg-gray-900 flex flex-col relative ${isChatOpen ? 'w-3/4' : 'w-full'}`}>
           <div className="relative flex-1 flex justify-center items-center">
             {remoteStream ? (
@@ -824,7 +812,7 @@ const MeetingRoom = () => {
                   style={{backgroundColor: 'black'}}
                 />
                 
-                {/* Remote participant name overlay - MOVED UP to avoid control panel overlap */}
+                {/* Remote participant name overlay */}
                 <div className="absolute top-4 left-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg z-10">
                   {getPeerDisplayName()}
                 </div>
@@ -838,7 +826,7 @@ const MeetingRoom = () => {
               </div>
             )}
             
-            {/* Local video (picture-in-picture) - MOVED UP to avoid control panel overlap */}
+            {/* Local video  */}
             <div className="absolute top-4 right-4 w-64 h-48 bg-black rounded-lg overflow-hidden shadow-lg z-10">
               {localStream && (interviewType === 'VIDEO_ONLY' || interviewType === 'AUDIO_AND_VIDEO') ? (
                 <div className="relative w-full h-full">
@@ -849,7 +837,7 @@ const MeetingRoom = () => {
                     muted
                     className="w-full h-full object-cover"
                   />
-                  {/* Local user name overlay - MOVED to not be cut off */}
+                  {/* Local user name overlay */}
                   <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-sm">
                     {getUserDisplayName()} (You)
                   </div>
@@ -859,7 +847,7 @@ const MeetingRoom = () => {
                   <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center">
                     <span className="text-lg text-white">You</span>
                   </div>
-                  {/* Local user name overlay - MOVED to be consistent */}
+                  {/* Local user name overlay  */}
                   <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-sm">
                     {getUserDisplayName()} (You)
                   </div>
@@ -880,7 +868,7 @@ const MeetingRoom = () => {
             </div>
           </div>
           
-          {/* Controls - Added z-index to ensure it's above other elements */}
+          {/* Controls  */}
           <div className="bg-gray-800 p-4 flex justify-center items-center space-x-6 sticky bottom-0 z-20">
             {(interviewType === 'AUDIO_ONLY' || interviewType === 'AUDIO_AND_VIDEO') && (
               <button
@@ -924,14 +912,14 @@ const MeetingRoom = () => {
           </div>
         </div>
         
-        {/* Chat area - Improved chat message display */}
+        {/* Chat area */}
         {isChatOpen && (
           <div className="w-1/4 bg-white border-l flex flex-col h-full">
             <div className="p-4 border-b">
               <h2 className="font-semibold">Meeting Chat</h2>
             </div>
             
-            {/* Messages - Enhanced to show names more clearly */}
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {chatMessages.length === 0 ? (
                 <p className="text-center text-gray-500 italic">No messages yet</p>

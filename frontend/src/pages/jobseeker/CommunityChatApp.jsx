@@ -6,8 +6,54 @@ import { useSelector } from 'react-redux';
 import { debounce } from 'lodash';
 import Loading from '../../components/Loading'
 
-// Constants
 const BASE_URL = 'http://127.0.0.1:8000';
+
+// Notification Component
+const Notification = ({ message, type = 'info', onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000); 
+    
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 flex items-center ${
+      type === 'success' ? 'bg-green-500 text-white' : 
+      type === 'error' ? 'bg-red-500 text-white' : 
+      'bg-blue-500 text-white'
+    }`}>
+      {type === 'success' && (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+        </svg>
+      )}
+      
+      {type === 'error' && (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        </svg>
+      )}
+      
+      {type === 'info' && (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        </svg>
+      )}
+      
+      <div className="flex-1">{message}</div>
+      <button 
+        onClick={onClose}
+        className="ml-4 text-white hover:text-gray-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  );
+};
 
 // Helper Components
 const FileIcon = ({ filePath }) => {
@@ -44,6 +90,22 @@ const getFileNameFromPath = (filePath) => {
   if (!filePath) return '';
   const parts = filePath.split('/');
   return parts[parts.length - 1];
+};
+
+// NotificationsContainer Component
+const NotificationsContainer = ({ notifications, removeNotification }) => {
+  return (
+    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-2">
+      {notifications.map((notification) => (
+        <Notification
+          key={notification.id}
+          message={notification.message}
+          type={notification.type}
+          onClose={() => removeNotification(notification.id)}
+        />
+      ))}
+    </div>
+  );
 };
 
 // Community List Item Component
@@ -193,8 +255,7 @@ const CommunitySidebar = ({
   );
 };
 // Message Component
-// Complete ChatMessage Component
-// Complete ChatMessage Component
+
 const ChatMessage = ({ message, openImageModal, isOwnMessage, isUnread }) => {
   return (
     <div
@@ -514,7 +575,7 @@ const ChatArea = ({
   messagesEndRef,
   firstUnreadMessageId,
   handleScroll,
-  messageContainerRef,  // Added this
+  messageContainerRef,  
   showScrollButton,    
   scrollToBottom       
 }) => {
@@ -542,13 +603,12 @@ const ChatArea = ({
         <div className="text-center py-4 text-red-500">{error}</div>
       )}
 
-      {/* Messages Container - with scroll handler */}
       <div
-  className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4"
-  style={{ maxHeight: 'calc(100vh - 250px)' }}
-  onScroll={handleScroll}
-  ref={messageContainerRef}
->
+        className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4"
+        style={{ maxHeight: 'calc(100vh - 250px)' }}
+        onScroll={handleScroll}
+        ref={messageContainerRef}
+      >
   {messages.length === 0 ? (
     <div className="text-center text-gray-500">No messages yet. Start the conversation!</div>
   ) : (
@@ -687,250 +747,235 @@ const CommunityChatApp = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [firstUnreadMessageId, setFirstUnreadMessageId] = useState(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-const [isProcessingReadStatus, setIsProcessingReadStatus] = useState(false);
-const [isAtBottom, setIsAtBottom] = useState(true);
-const [showScrollButton, setShowScrollButton] = useState(false);
-const previousSelectedCommunity = useRef(null);
-const debounceTimers = useRef({});
-  // Add these to the CommunityChatApp component
+  const [isProcessingReadStatus, setIsProcessingReadStatus] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const previousSelectedCommunity = useRef(null);
+  const debounceTimers = useRef({});
+  const [notifications, setNotifications] = useState([]);
 
-// Add to existing state
-const [isScrolledToUnread, setIsScrolledToUnread] = useState(false);
 
-// Add this function to handle updating read status
-const updateReadStatus = (communityId, messageId) => {
-  // Cancel any existing timer for this community
-  if (debounceTimers.current[communityId]) {
-    clearTimeout(debounceTimers.current[communityId]);
-  }
-  
-  // Prevent excessive API calls
-  if (isProcessingReadStatus) return;
-  
-  // Set a timer to delay the API call
-  debounceTimers.current[communityId] = setTimeout(() => {
-    if (!communityId || !messageId) return;
+  const addNotification = (message, type = 'success') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    return id;
+  };
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
+
+  const [isScrolledToUnread, setIsScrolledToUnread] = useState(false);
+
+  const updateReadStatus = (communityId, messageId) => {
+    if (debounceTimers.current[communityId]) {
+      clearTimeout(debounceTimers.current[communityId]);
+    }
     
-    setIsProcessingReadStatus(true);
+    if (isProcessingReadStatus) return;
     
-    axiosInstance.post('/community/read-status/', {
-      community: communityId,
-      message_id: messageId
-    })
-    .then(() => {
-      // Update local unread count
-      setUnreadCounts(prev => ({
-        ...prev,
-        [communityId]: 0
-      }));
-      setFirstUnreadMessageId(null);
+    debounceTimers.current[communityId] = setTimeout(() => {
+      if (!communityId || !messageId) return;
       
-      // Also send via WebSocket for real-time updates to other clients
-      if (WebSocketService.getStatus() === 'CONNECTED') {
-        WebSocketService.sendMessage({
-          type: 'mark_read',
-          community_id: communityId,
-          message_id: messageId
-        });
-      }
-    })
-    .catch(err => console.error('Error updating read status:', err))
-    .finally(() => {
-      setIsProcessingReadStatus(false);
-    });
-  }, 500); // 500ms debounce
-};
+      setIsProcessingReadStatus(true);
+      
+      axiosInstance.post('/community/read-status/', {
+        community: communityId,
+        message_id: messageId
+      })
+      .then(() => {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [communityId]: 0
+        }));
+        setFirstUnreadMessageId(null);
+        
+        if (WebSocketService.getStatus() === 'CONNECTED') {
+          WebSocketService.sendMessage({
+            type: 'mark_read',
+            community_id: communityId,
+            message_id: messageId
+          });
+        }
+      })
+      .catch(err => {
+        console.error('Error updating read status:', err);
+      })
+      .finally(() => {
+        setIsProcessingReadStatus(false);
+      });
+    }, 500); // 500ms debounce
+  };
 
-// Add this useEffect to handle marking messages as read when viewing
-useEffect(() => {
-    // If user is viewing the messages and has scrolled past the first unread message
+  useEffect(() => {
     if (selectedCommunityId && isScrolledToUnread) {
         updateReadStatus();
     }
-}, [selectedCommunityId, isScrolledToUnread, messages]);
-// Add this function to CommunityChatApp
-const scrollToFirstUnread = () => {
-  if (!firstUnreadMessageId) return;
+  }, [selectedCommunityId, isScrolledToUnread, messages]);
   
-  const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
-  if (unreadElement) {
-      unreadElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setIsScrolledToUnread(true);
-  }
-};
-
-// Add this function to handle scroll detection
-const handleScroll = (e) => {
-  // Check if user has scrolled away from bottom
-  const container = e.target;
-  const scrollPosition = container.scrollTop + container.clientHeight;
-  const scrollHeight = container.scrollHeight;
-  
-  // If we're within 100px of the bottom, consider it "at bottom"
-  const atBottom = scrollHeight - scrollPosition < 100;
-  setIsAtBottom(atBottom);
-  setShowScrollButton(!atBottom);
-  
-  // Process unread messages if scrolled far enough
-  if (firstUnreadMessageId && selectedCommunityId) {
+  const scrollToFirstUnread = () => {
+    if (!firstUnreadMessageId) return;
+    
     const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
     if (unreadElement) {
-      const unreadPosition = unreadElement.offsetTop;
-      
-      if (scrollPosition >= unreadPosition) {
-        // User has scrolled past the first unread message
-        // Find the latest message ID and mark as read
-        if (messages.length > 0) {
-          const latestMessage = messages[messages.length - 1];
-          updateReadStatus(selectedCommunityId, latestMessage.id);
-          setFirstUnreadMessageId(null);
+        unreadElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setIsScrolledToUnread(true);
+    }
+  };
+
+  const handleScroll = (e) => {
+    const container = e.target;
+    const scrollPosition = container.scrollTop + container.clientHeight;
+    const scrollHeight = container.scrollHeight;
+    
+    const atBottom = scrollHeight - scrollPosition < 100;
+    setIsAtBottom(atBottom);
+    setShowScrollButton(!atBottom);
+    
+    if (firstUnreadMessageId && selectedCommunityId) {
+      const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
+      if (unreadElement) {
+        const unreadPosition = unreadElement.offsetTop;
+        
+        if (scrollPosition >= unreadPosition) {
+          if (messages.length > 0) {
+            const latestMessage = messages[messages.length - 1];
+            updateReadStatus(selectedCommunityId, latestMessage.id);
+            setFirstUnreadMessageId(null);
+          }
         }
       }
     }
-  }
+    
+    if (atBottom && selectedCommunityId && unreadCounts[selectedCommunityId] > 0) {
+      if (messages.length > 0) {
+        const latestMessage = messages[messages.length - 1];
+        updateReadStatus(selectedCommunityId, latestMessage.id);
+      }
+    }
+  };
   
-  // If we scrolled to the bottom and there are unread messages, mark them as read
-  if (atBottom && selectedCommunityId && unreadCounts[selectedCommunityId] > 0) {
-    if (messages.length > 0) {
-      const latestMessage = messages[messages.length - 1];
-      updateReadStatus(selectedCommunityId, latestMessage.id);
-    }
-  }
-};
-const setupWebSocketMessageHandler = () => {
-  WebSocketService.onMessage((data) => {
-    console.log('Received WebSocket message:', data);
-    
-    if (data.error) {
-      console.error('WebSocket error:', data.error);
-      setError(data.error);
-      return;
-    }
-
-    if (data.type === 'connection_established') {
-      console.log('WebSocket connection established:', data.message);
-      return;
-    }
-    
-    if (data.type === 'read_status_updated') {
-      // Update unread counts when read status is updated by any client
-      setUnreadCounts(prev => ({
-        ...prev,
-        [data.community_id]: 0
-      }));
+  const setupWebSocketMessageHandler = () => {
+    WebSocketService.onMessage((data) => {
+      console.log('Received WebSocket message:', data);
       
-      if (String(data.community_id) === String(selectedCommunityId)) {
-        setFirstUnreadMessageId(null);
+      if (data.error) {
+        console.error('WebSocket error:', data.error);
+        setError(data.error);
+        return;
       }
-      return;
-    }
-    
-    if (data.type === 'unread_counts_update') {
-      // Handle unread counts update from server
-      if (data.unread_counts) {
-        setUnreadCounts(data.unread_counts);
-      }
-      return;
-    }
 
-    // Handle incoming chat message
-    if (data.content || data.attachment) {
-      const messageId = data.id;
-      
-      // Skip if we've already processed this message
-      if (messageId && processedMessageIds.current.has(messageId)) {
+      if (data.type === 'connection_established') {
+        console.log('WebSocket connection established:', data.message);
         return;
       }
       
-      // Add to processed set
-      if (messageId) {
-        processedMessageIds.current.add(messageId);
+      if (data.type === 'read_status_updated') {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [data.community_id]: 0
+        }));
+        
+        if (String(data.community_id) === String(selectedCommunityId)) {
+          setFirstUnreadMessageId(null);
+        }
+        return;
       }
       
-      // Format the message
-      const formattedMessage = {
-        id: data.id,
-        content: data.content,
-        attachment: data.attachment,
-        sender: data.sender,
-        sender_id: data.sender_id,
-        timestamp: data.timestamp || data.created_at,
-        isOwnMessage: isUserMessage(data),
+      if (data.type === 'unread_counts_update') {
+        if (data.unread_counts) {
+          setUnreadCounts(data.unread_counts);
+        }
+        return;
+      }
+
+      if (data.content || data.attachment) {
+        const messageId = data.id;
+        
+        if (messageId && processedMessageIds.current.has(messageId)) {
+          return;
+        }
+        
+        if (messageId) {
+          processedMessageIds.current.add(messageId);
+        }
+        
+        // Format the message
+        const formattedMessage = {
+          id: data.id,
+          content: data.content,
+          attachment: data.attachment,
+          sender: data.sender,
+          sender_id: data.sender_id,
+          timestamp: data.timestamp || data.created_at,
+          isOwnMessage: isUserMessage(data),
+        };
+        
+        if (String(data.community_id) === String(selectedCommunityId)) {
+          // Update messages state
+          setMessages(prev => {
+            const filteredMessages = prev.filter(
+              msg => !msg.isOptimistic || msg.content !== formattedMessage.content
+            );
+            
+            return [...filteredMessages, formattedMessage].sort(
+              (a, b) => new Date(a.timestamp || a.created_at) - new Date(b.timestamp || b.created_at)
+            );
+          });
+          
+          if (!formattedMessage.isOwnMessage && !isAtBottom && !firstUnreadMessageId) {
+            setFirstUnreadMessageId(messageId);
+          }
+          
+          if (!formattedMessage.isOwnMessage && !isAtBottom) {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [data.community_id]: (prev[data.community_id] || 0) + 1
+            }));
+            
+            setShowScrollButton(true);
+          }
+        } else {
+          if (!formattedMessage.isOwnMessage) {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [data.community_id]: (prev[data.community_id] || 0) + 1
+            }));
+          }
+        }
+      }
+    });
+  };
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCounts();
+      
+      
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchUnreadCounts();
+        }
       };
       
-      // Handle message for current community
-      if (String(data.community_id) === String(selectedCommunityId)) {
-        // Update messages state
-        setMessages(prev => {
-          // Filter out optimistic messages
-          const filteredMessages = prev.filter(
-            msg => !msg.isOptimistic || msg.content !== formattedMessage.content
-          );
-          
-          return [...filteredMessages, formattedMessage].sort(
-            (a, b) => new Date(a.timestamp || a.created_at) - new Date(b.timestamp || b.created_at)
-          );
-        });
-        
-        // Set first unread message ID if not our own message and we're not at bottom
-        if (!formattedMessage.isOwnMessage && !isAtBottom && !firstUnreadMessageId) {
-          setFirstUnreadMessageId(messageId);
-        }
-        
-        // Update unread count if not at bottom and not our own message
-        if (!formattedMessage.isOwnMessage && !isAtBottom) {
-          setUnreadCounts(prev => ({
-            ...prev,
-            [data.community_id]: (prev[data.community_id] || 0) + 1
-          }));
-          
-          // Show scroll button when new messages arrive and we're not at bottom
-          setShowScrollButton(true);
-        }
-      } else {
-        // For other communities, just update unread counts for non-user messages
-        if (!formattedMessage.isOwnMessage) {
-          setUnreadCounts(prev => ({
-            ...prev,
-            [data.community_id]: (prev[data.community_id] || 0) + 1
-          }));
-        }
-      }
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
-  });
-};
-useEffect(() => {
-  // This effect will run when the component mounts
-  if (isAuthenticated) {
-    fetchUnreadCounts();
-    
-    // Add a visibility change listener to fetch unread counts
-    // when the user returns to the tab
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUnreadCounts();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Clean up
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }
-}, [isAuthenticated]);
-useEffect(() => {
-  if (isAuthenticated) {
-    setupWebSocketMessageHandler();
-  }
-}, [isAuthenticated]);
-// Add a function to handle incoming messages and update unread counts
-const handleIncomingMessage = (data) => {
+  }, [isAuthenticated]);
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      setupWebSocketMessageHandler();
+    }
+  }, [isAuthenticated]);
+  
+  const handleIncomingMessage = (data) => {
     if (!data.community_id || !data.id) return;
     
-    // If this is for the currently selected community and user is not scrolled to bottom
-    // increment the unread count
+
     if (
         String(data.community_id) === String(selectedCommunityId) && 
         !isScrolledToUnread &&
@@ -946,57 +991,52 @@ const handleIncomingMessage = (data) => {
             setFirstUnreadMessageId(data.id);
         }
     } 
-    // If this is for another community, increment its unread count
     else if (String(data.community_id) !== String(selectedCommunityId) && !isUserMessage(data)) {
         setUnreadCounts(prev => ({
             ...prev,
             [data.community_id]: (prev[data.community_id] || 0) + 1
         }));
     }
-};
-const fetchUnreadCounts = async () => {
-  try {
-    const response = await axiosInstance.get('/community/read-status/');
-    
-    // Update unread counts state
-    const unreadCountsMap = {};
-    response.forEach(status => {
-      unreadCountsMap[status.community] = status.unread_count || 0;
-    });
-    
-    setUnreadCounts(unreadCountsMap);
-    
-    // If we're in a community with unread messages, set the first unread message ID
-    if (selectedCommunityId && unreadCountsMap[selectedCommunityId] > 0) {
-      try {
-        const unreadResponse = await axiosInstance.get(`/community/first-unread/?community=${selectedCommunityId}`);
-        if (unreadResponse.has_unread && unreadResponse.first_unread_message) {
-          setFirstUnreadMessageId(unreadResponse.first_unread_message.id);
+  };
+  
+  const fetchUnreadCounts = async () => {
+    try {
+      const response = await axiosInstance.get('/community/read-status/');
+      
+      const unreadCountsMap = {};
+      response.forEach(status => {
+        unreadCountsMap[status.community] = status.unread_count || 0;
+      });
+      
+      setUnreadCounts(unreadCountsMap);
+      
+      if (selectedCommunityId && unreadCountsMap[selectedCommunityId] > 0) {
+        try {
+          const unreadResponse = await axiosInstance.get(`/community/first-unread/?community=${selectedCommunityId}`);
+          if (unreadResponse.has_unread && unreadResponse.first_unread_message) {
+            setFirstUnreadMessageId(unreadResponse.first_unread_message.id);
+          }
+        } catch (err) {
+          console.error("Error fetching first unread message:", err);
         }
-      } catch (err) {
-        console.error("Error fetching first unread message:", err);
       }
+    } catch (err) {
+      console.error("Error fetching unread counts:", err);
     }
-  } catch (err) {
-    console.error("Error fetching unread counts:", err);
-  }
-};
+  };
 
   const markMessagesAsRead = async (communityId, messageId = null) => {
     try {
-      // Call API to mark messages as read
       await axiosInstance.post('/community/read-status/', {
         community: communityId,
         message_id: messageId
       });
       
-      // Update unread counts
       setUnreadCounts(prev => ({
         ...prev,
         [communityId]: 0
       }));
       
-      // Also send through WebSocket for real-time updates
       if (WebSocketService.getStatus() === 'CONNECTED') {
         WebSocketService.sendMessage({
           type: 'mark_read',
@@ -1042,56 +1082,57 @@ const fetchUnreadCounts = async () => {
     );
   };
 
-  // Make sure this function is correctly implemented in CommunityChatApp
-const fetchCommunities = async () => {
-  try {
-    setLoading(true);
-    console.log("Fetching communities...");
-    
-    // Get communities data
-    const communitiesResponse = await axiosInstance.get('/community/communities/');
-    console.log("Communities response:", communitiesResponse);
-    
-    // Get memberships data
-    const membershipsResponse = await axiosInstance.get('/community/members/');
-    console.log("Memberships response:", membershipsResponse);
-    
-    // Create membership map
-    const membershipMap = {};
-    membershipsResponse.forEach((membership) => {
-      membershipMap[membership.community] = true;
-    });
-    setUserMemberships(membershipMap);
-    
-    // Ensure we're working with arrays
-    const communitiesArray = Array.isArray(communitiesResponse) 
-      ? communitiesResponse 
-      : (communitiesResponse?.results || []);
-    
-    setCommunities(communitiesArray);
-    
-    // Filter communities properly
-    console.log("User type:", user.user_type);
-    console.log("Membership map:", membershipMap);
-    
-    const myComms = communitiesArray.filter((c) => 
-      membershipMap[c.id] || user.user_type === 'admin'
-    );
-    console.log("My communities:", myComms);
-    
-    const exploreComms = communitiesArray.filter((c) => 
-      !membershipMap[c.id] && user.user_type !== 'admin'
-    );
-    
-    setMyCommunities(myComms);
-    setExploreCommunities(exploreComms);
-  } catch (err) {
-    console.error("Error fetching communities:", err);
-    setError(err.message || 'Failed to fetch communities');
-  } finally {
-    setLoading(false);
-  }
-};
+  const fetchCommunities = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching communities...");
+      
+      // Get communities data
+      const communitiesResponse = await axiosInstance.get('/community/communities/');
+      console.log("Communities response:", communitiesResponse);
+      
+      // Get memberships data
+      const membershipsResponse = await axiosInstance.get('/community/members/');
+      console.log("Memberships response:", membershipsResponse);
+      
+      // Create membership map
+      const membershipMap = {};
+      membershipsResponse.forEach((membership) => {
+        membershipMap[membership.community] = true;
+      });
+      setUserMemberships(membershipMap);
+      
+      const communitiesArray = Array.isArray(communitiesResponse) 
+        ? communitiesResponse 
+        : (communitiesResponse?.results || []);
+      
+      setCommunities(communitiesArray);
+      
+      // Filter communities properly
+      console.log("User type:", user.user_type);
+      console.log("Membership map:", membershipMap);
+      
+      const myComms = communitiesArray.filter((c) => 
+        membershipMap[c.id] || user.user_type === 'admin'
+      );
+      console.log("My communities:", myComms);
+      
+      const exploreComms = communitiesArray.filter((c) => 
+        !membershipMap[c.id] && user.user_type !== 'admin'
+      );
+      
+      setMyCommunities(myComms);
+      setExploreCommunities(exploreComms);
+    } catch (err) {
+      console.error("Error fetching communities:", err);
+      setError(err.message || 'Failed to fetch communities');
+      // Keep using alert for errors other than community creation and leaving
+      alert('Failed to fetch communities');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -1107,6 +1148,7 @@ const fetchCommunities = async () => {
       } catch (err) {
         setError('Failed to connect to chat service');
         console.error('WebSocket connection error:', err);
+        alert('Failed to connect to chat service');
       }
     };
 
@@ -1116,88 +1158,80 @@ const fetchCommunities = async () => {
       setWsStatus(WebSocketService.getStatus());
     }, 2000);
 
-    // In the useEffect where WebSocketService.onMessage is set
-// Replace your existing WebSocket message handler
-WebSocketService.onMessage((data) => {
-  console.log('Received WebSocket message:', data);
-  
-  if (data.error) {
-    console.error('WebSocket error:', data.error);
-    setError(data.error);
-    return;
-  }
 
-  if (data.type === 'connection_established') {
-    console.log('WebSocket connection established:', data.message);
-    return;
-  }
-  
-  if (data.type === 'read_status_updated') {
-    // Only update if this is for the current community
-    if (data.community_id == selectedCommunityId) {
-      setFirstUnreadMessageId(null);
-    }
-    
-    // Update unread counts regardless
-    setUnreadCounts(prev => ({
-      ...prev,
-      [data.community_id]: 0
-    }));
-    return;
-  }
-
-  // Only process messages for the currently selected community
-  if (String(data.community_id) === String(selectedCommunityId)) {
-    const messageId = data.id;
-    
-    // Skip if we've already processed this message
-    if (messageId && processedMessageIds.current.has(messageId)) {
-      return;
-    }
-    
-    if (messageId) {
-      processedMessageIds.current.add(messageId);
-    }
-    
-    const formattedMessage = {
-      id: data.id,
-      content: data.content,
-      attachment: data.attachment,
-      sender: data.sender,
-      sender_id: data.sender_id,
-      timestamp: data.timestamp || data.created_at,
-      isOwnMessage: isUserMessage(data),
-    };
-    
-    // Update messages state without causing flicker
-    setMessages(prev => {
-      // Filter out duplicates
-      const filteredMessages = prev.filter(
-        msg => !msg.isOptimistic || msg.content !== formattedMessage.content
-      );
+    WebSocketService.onMessage((data) => {
+      console.log('Received WebSocket message:', data);
       
-      return [...filteredMessages, formattedMessage].sort(
-        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-      );
+      if (data.error) {
+        console.error('WebSocket error:', data.error);
+        setError(data.error);
+        addNotification(data.error, 'error');
+        return;
+      }
+
+      if (data.type === 'connection_established') {
+        console.log('WebSocket connection established:', data.message);
+        return;
+      }
+      
+      if (data.type === 'read_status_updated') {
+        if (data.community_id == selectedCommunityId) {
+          setFirstUnreadMessageId(null);
+        }
+        
+        setUnreadCounts(prev => ({
+          ...prev,
+          [data.community_id]: 0
+        }));
+        return;
+      }
+
+      if (String(data.community_id) === String(selectedCommunityId)) {
+        const messageId = data.id;
+        
+        if (messageId && processedMessageIds.current.has(messageId)) {
+          return;
+        }
+        
+        if (messageId) {
+          processedMessageIds.current.add(messageId);
+        }
+        
+        const formattedMessage = {
+          id: data.id,
+          content: data.content,
+          attachment: data.attachment,
+          sender: data.sender,
+          sender_id: data.sender_id,
+          timestamp: data.timestamp || data.created_at,
+          isOwnMessage: isUserMessage(data),
+        };
+        
+        setMessages(prev => {
+          const filteredMessages = prev.filter(
+            msg => !msg.isOptimistic || msg.content !== formattedMessage.content
+          );
+          
+          return [...filteredMessages, formattedMessage].sort(
+            (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+          );
+        });
+        
+        if (!formattedMessage.isOwnMessage) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.community_id]: (prev[data.community_id] || 0) + 1
+          }));
+        }
+      } else {
+        if (!isUserMessage(data)) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.community_id]: (prev[data.community_id] || 0) + 1
+          }));
+        }
+      }
     });
-    
-    // Update unread count
-    if (!formattedMessage.isOwnMessage) {
-      setUnreadCounts(prev => ({
-        ...prev,
-        [data.community_id]: (prev[data.community_id] || 0) + 1
-      }));
-    }
-  } else {
-    // For other communities, just update unread counts
-    if (!isUserMessage(data)) {
-      setUnreadCounts(prev => ({
-        ...prev,
-        [data.community_id]: (prev[data.community_id] || 0) + 1
-      }));
-    }
-  }
-});
 
     return () => {
       clearInterval(statusInterval);
@@ -1216,7 +1250,6 @@ WebSocketService.onMessage((data) => {
       return;
     }
   
-    // Skip redundant loads if selecting the same community again
     if (previousSelectedCommunity.current === selectedCommunityId) {
       return;
     }
@@ -1236,7 +1269,6 @@ WebSocketService.onMessage((data) => {
     };
   
     const fetchMessages = async () => {
-      // Avoid concurrent requests for messages
       if (isLoadingMessages) return;
       
       try {
@@ -1257,7 +1289,6 @@ WebSocketService.onMessage((data) => {
           
           setMessages(processedMessages);
           
-          // Delayed read status update - wait for UI to settle
           setTimeout(() => {
             if (processedMessages.length > 0) {
               const latestMessage = processedMessages[processedMessages.length - 1];
@@ -1292,38 +1323,30 @@ WebSocketService.onMessage((data) => {
   
     initChat();
     
-    // Cleanup function
     return () => {
       // Clear any pending timers
       Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
     };
   }, [selectedCommunityId, isAuthenticated, user.user_type]);
   
-  // Add a ref for the first unread message
-const firstUnreadRef = useRef(null);
+  const firstUnreadRef = useRef(null);
 
-// Add this useEffect for scrolling to unread messages
-useEffect(() => {
-  // If there's a first unread message and we've rendered the messages
-  if (firstUnreadMessageId && messages.length > 0) {
-    // Find the element and scroll to it
-    const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
-    if (unreadElement) {
-      unreadElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  useEffect(() => {
+    if (firstUnreadMessageId && messages.length > 0) {
+      const unreadElement = document.getElementById(`message-${firstUnreadMessageId}`);
+      if (unreadElement) {
+        unreadElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        markMessagesAsRead(selectedCommunityId);
+      }
+    } else if (messages.length > 0) {
+      scrollToBottom();
       
-      // Mark messages as read when viewing
-      markMessagesAsRead(selectedCommunityId);
+      if (selectedCommunityId) {
+        markMessagesAsRead(selectedCommunityId);
+      }
     }
-  } else if (messages.length > 0) {
-    // If no unread messages, just scroll to bottom
-    scrollToBottom();
-    
-    // Mark as read anyway to ensure synchronization
-    if (selectedCommunityId) {
-      markMessagesAsRead(selectedCommunityId);
-    }
-  }
-}, [firstUnreadMessageId, messages, selectedCommunityId]);
+  }, [firstUnreadMessageId, messages, selectedCommunityId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -1346,7 +1369,7 @@ useEffect(() => {
       setSelectedCommunityId(response.id);
       setIsCreateModalOpen(false);
       setNewCommunity({ name: '', description: '', category: '', cover_image: null });
-      alert('Community created successfully!');
+      addNotification('Community created successfully!', 'success');
     } catch (err) {
       alert(err.message || 'Failed to create community');
     }
@@ -1359,7 +1382,7 @@ useEffect(() => {
       const communityToJoin = exploreCommunities.find((c) => c.id === communityId);
       setMyCommunities((prev) => [...prev, communityToJoin]);
       setExploreCommunities((prev) => prev.filter((c) => c.id !== communityId));
-      alert('Successfully joined the community!');
+      addNotification('Successfully joined the community!', 'success');
       if (selectedCommunityId === communityId) {
         const response = await axiosInstance.get(`/community/communities/${communityId}/`);
         setCommunity(response);
@@ -1391,9 +1414,9 @@ useEffect(() => {
         setSelectedCommunityId(null);
         setCommunity(null);
         setMessages([]);
-        setError(null); // Clear error after leaving
+        setError(null);
       }
-      alert('Successfully left the community.');
+      addNotification('Successfully left the community.', 'success');
     } catch (err) {
       setError(err.message || 'Failed to leave community');
       alert(err.message || 'Failed to leave community');
@@ -1517,53 +1540,61 @@ useEffect(() => {
         </button>
       </div>
 
-     {/* Sidebar */}
-     <CommunitySidebar
-            isSidebarOpen={isSidebarOpen}
-            myCommunities={myCommunities}
-            exploreCommunities={exploreCommunities}
-            selectedCommunityId={selectedCommunityId}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            setIsSidebarOpen={setIsSidebarOpen}
-            setIsCreateModalOpen={setIsCreateModalOpen}
-            setSelectedCommunityId={setSelectedCommunityId}
-            filterCommunities={filterCommunities}
-            joinCommunity={joinCommunity}
-            user={user}
-            unreadCounts={unreadCounts}
-        />
+      {/* Notifications Container */}
+      <NotificationsContainer 
+        notifications={notifications}
+        removeNotification={removeNotification}
+      />
+
+      {/* Sidebar */}
+      <CommunitySidebar
+        isSidebarOpen={isSidebarOpen}
+        myCommunities={myCommunities}
+        exploreCommunities={exploreCommunities}
+        selectedCommunityId={selectedCommunityId}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        setIsSidebarOpen={setIsSidebarOpen}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        setSelectedCommunityId={setSelectedCommunityId}
+        filterCommunities={filterCommunities}
+        joinCommunity={joinCommunity}
+        user={user}
+        unreadCounts={unreadCounts}
+      />
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col min-h-[90vh]">
-            <ChatArea
-                selectedCommunityId={selectedCommunityId}
-                community={community}
-                messages={messages}
-                error={error}
-                wsStatus={wsStatus}
-                userMemberships={userMemberships}
-                user={user}
-                leaveCommunity={leaveCommunity}
-                newMessage={newMessage}
-                setNewMessage={setNewMessage}
-                attachment={attachment}
-                attachmentPreview={attachmentPreview}
-                selectedFileName={selectedFileName}
-                clearAttachment={clearAttachment}
-                handleFileChange={handleFileChange}
-                sendMessage={sendMessage}
-                openImageModal={openImageModal}
-                messagesEndRef={messagesEndRef}
-                firstUnreadMessageId={firstUnreadMessageId}
-                handleScroll={handleScroll}
-                messageContainerRef={messageContainerRef}
-            />
-             <ScrollToUnreadButton 
-        onClick={scrollToFirstUnread} 
-        unreadCount={unreadCounts[selectedCommunityId] || 0} 
-    />
-        </div>
+        <ChatArea
+          selectedCommunityId={selectedCommunityId}
+          community={community}
+          messages={messages}
+          error={error}
+          wsStatus={wsStatus}
+          userMemberships={userMemberships}
+          user={user}
+          leaveCommunity={leaveCommunity}
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          attachment={attachment}
+          attachmentPreview={attachmentPreview}
+          selectedFileName={selectedFileName}
+          clearAttachment={clearAttachment}
+          handleFileChange={handleFileChange}
+          sendMessage={sendMessage}
+          openImageModal={openImageModal}
+          messagesEndRef={messagesEndRef}
+          firstUnreadMessageId={firstUnreadMessageId}
+          handleScroll={handleScroll}
+          messageContainerRef={messageContainerRef}
+          showScrollButton={showScrollButton}
+          scrollToBottom={scrollToBottom}
+        />
+        <ScrollToUnreadButton 
+          onClick={scrollToFirstUnread} 
+          unreadCount={unreadCounts[selectedCommunityId] || 0} 
+        />
+      </div>
 
 
       {/* Create Community Modal */}

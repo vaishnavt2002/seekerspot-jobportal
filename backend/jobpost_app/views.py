@@ -1,3 +1,4 @@
+from http.client import ImproperConnectionState
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,6 +16,8 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator,EmptyPage
 import logging
 import bleach
+from notification_app.utils import send_notification
+from notification_app.models import Notification
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +44,6 @@ class JobPostView(APIView):
             return ""
         # Clean the text with bleach to remove potentially harmful HTML
         cleaned_text = bleach.clean(str(text).strip(), strip=True)
-        # Apply length limit if specified
         if max_length and len(cleaned_text) > max_length:
             cleaned_text = cleaned_text[:max_length]
         return cleaned_text
@@ -222,7 +224,6 @@ class JobPostView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Copy data to avoid modifying the original
             data = request.data.copy()
             
             # Validate choice fields
@@ -950,6 +951,20 @@ class JobApplicationStatusUpdateView(APIView):
                 application.status = status_value
                 application.save()
                 
+                # Send notification to job seeker
+                job_seeker_user = application.job_seeker.user
+                job_title = application.jobpost.title
+                company_name = job_provider.company_name
+                
+                send_notification(
+                    user=job_seeker_user,
+                    notification_type=Notification.TYPE_APPLICATION_UPDATE,
+                    title=f"Application Updated: {job_title}",
+                    message=f"Your application for {job_title} at {company_name} is now {status_value}",
+                    source_id=str(application.id),
+                    source_type="application"
+                )
+
                 serializer = JobApplicationDetailSerializer(application)
                 return Response(serializer.data)
             

@@ -23,7 +23,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
         
         logger.info("WebSocket authenticating user: %s, user_id=%s", self.user.username, self.user.id)
         
-        # Join all communities the user is a member of
         try:
             communities = await self.get_user_communities()
             self.community_groups = {}
@@ -36,7 +35,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
             await self.accept()
             logger.info("WebSocket connection accepted for user: %s", self.user.username)
             
-            # Send connection confirmation
             await self.send(text_data=json.dumps({
                 'type': 'connection_established',
                 'message': 'Connected to community chat service',
@@ -63,11 +61,9 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
             message_type = data.get('type', 'chat_message')
         
             if message_type == 'mark_read':
-                # Handle mark read message
                 await self.handle_mark_read(data)
                 return
             elif message_type == 'fetch_unread_counts':
-                # Handle fetching unread counts
                 await self.handle_fetch_unread_counts()
                 return
             community_id = data.get('community_id')
@@ -82,7 +78,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
                 
-            # Verify user is a member or admin
             is_authorized = await self.is_member_or_admin(community_id)
             if not is_authorized:
                 logger.warning("User %s not authorized for community %s", self.user.username, community_id)
@@ -91,16 +86,13 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
                 
-            # Save message to database if there's content or an attachment
             if message.strip() or attachment:
                 saved_message = await self.save_message(community_id, message, attachment)
                 
-                # Get the actual attachment URL from the saved message
                 attachment_url = None
                 if saved_message.attachment:
                     attachment_url = saved_message.attachment.url
                 
-                # Broadcast to group
                 await self.channel_layer.group_send(
                     f'community_{community_id}',
                     {
@@ -129,7 +121,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
 
     async def chat_message(self, event):
         try:
-            # Send message to WebSocket
             await self.send(text_data=json.dumps({
                 'community_id': event['community_id'],
                 'content': event['message'],
@@ -239,7 +230,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def update_read_status(self, community_id, message_id=None):
         try:
-            # Use shorter transactions to reduce lock time
             with transaction.atomic():
                 community = Community.objects.get(id=community_id)
                 
@@ -282,27 +272,23 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
     def get_unread_counts(self):
         try:
             result = {}
-            # Get communities the user is a member of
             if self.user.user_type == 'admin':
                 communities = Community.objects.all()
             else:
                 communities = Community.objects.filter(members__user=self.user)
                 
             for community in communities:
-                # Get user's last read message timestamp
                 read_status = UserReadStatus.objects.filter(
                     user=self.user,
                     community=community
                 ).first()
                 
                 if read_status and read_status.last_read_message:
-                    # Count messages newer than the last read
                     unread_count = CommunityMessage.objects.filter(
                         community=community,
                         created_at__gt=read_status.last_read_message.created_at
-                    ).exclude(sender=self.user).count()  # Exclude user's own messages
+                    ).exclude(sender=self.user).count()  
                 else:
-                    # If no read status, all messages are unread
                     unread_count = CommunityMessage.objects.filter(
                         community=community
                     ).exclude(sender=self.user).count()

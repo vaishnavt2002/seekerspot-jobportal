@@ -11,7 +11,6 @@ from .utils import get_attachment_type
 from django.db import transaction
 
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
 class IsAdminOrAuthenticated(permissions.BasePermission):
@@ -225,7 +224,6 @@ class CommunityMessageListView(APIView):
             return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
-        # Add the sender to the data
         data = request.data.copy()
         
         # Validate the user is a member of the community
@@ -284,8 +282,6 @@ class CommunityMessageListView(APIView):
                     logger.debug("Broadcasted message to group: %s", group_name)
                 except Exception as e:
                     logger.error("Failed to broadcast message to WebSocket: %s", str(e), exc_info=True)
-                    # Continue with response even if broadcast fails, as message is saved
-                    pass
                 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             logger.warning("Invalid message data: %s", serializer.errors)
@@ -299,7 +295,6 @@ class CommunityMessageListView(APIView):
             return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
-#Unread message part
 
 
 class MarkMessagesReadView(APIView):
@@ -318,7 +313,6 @@ class MarkMessagesReadView(APIView):
         try:
             community = Community.objects.get(id=community_id)
             
-            # Check if user is a member
             is_member = CommunityMember.objects.filter(
                 community=community, 
                 user=request.user
@@ -330,7 +324,6 @@ class MarkMessagesReadView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # If message_id is provided, use that message
             if message_id:
                 try:
                     message = CommunityMessage.objects.get(id=message_id, community=community)
@@ -364,27 +357,23 @@ class UnreadCountView(APIView):
         user = request.user
         result = {}
         
-        # Get communities the user is a member of
         if user.user_type == 'admin':
             communities = Community.objects.all()
         else:
             communities = Community.objects.filter(members__user=user)
         
         for community in communities:
-            # Get user's last read message timestamp
             read_status = UserReadStatus.objects.filter(
                 user=user,
                 community=community
             ).first()
             
             if read_status and read_status.last_read_message:
-                # Count messages newer than the last read
                 unread_count = CommunityMessage.objects.filter(
                     community=community,
                     created_at__gt=read_status.last_read_message.created_at
-                ).exclude(sender=user).count()  # Exclude user's own messages
+                ).exclude(sender=user).count() 
             else:
-                # If no read status, all messages are unread
                 unread_count = CommunityMessage.objects.filter(
                     community=community
                 ).exclude(sender=user).count()
@@ -411,7 +400,6 @@ class FirstUnreadMessageView(APIView):
         try:
             community = Community.objects.get(id=community_id)
             
-            # Check if user is a member
             is_member = CommunityMember.objects.filter(
                 community=community, 
                 user=request.user
@@ -530,7 +518,6 @@ class UserReadStatusView(APIView):
                     try:
                         message_id = int(message_id)
                     except (ValueError, TypeError):
-                        # Handle temp IDs gracefully
                         logger.warning(f"Invalid message_id format: {message_id}, using latest message instead")
                         message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
                     else:
@@ -545,7 +532,6 @@ class UserReadStatusView(APIView):
                 message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
                     
             if message:
-                # Use transaction to avoid database locks
                 with transaction.atomic():
                     read_status, created = UserReadStatus.objects.update_or_create(
                         user=user,
