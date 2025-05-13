@@ -18,6 +18,8 @@ import logging
 import bleach
 from notification_app.utils import send_notification
 from notification_app.models import Notification
+from notification_app.utils import *
+from notification_app.utils import send_job_applied_notification
 logger = logging.getLogger(__name__)
 
 
@@ -703,6 +705,10 @@ class ApplyForJobView(APIView):
                 status="APPLIED"
             )
             
+            # Send notification to job provider
+            
+            send_job_applied_notification(application)
+            
             serializer = JobApplicationSerializer(application)
             
             # Get user skills and job skills for informational purposes
@@ -948,22 +954,13 @@ class JobApplicationStatusUpdateView(APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                     
+                # Save the previous status for notification logic
+                previous_status = application.status
+                
                 application.status = status_value
                 application.save()
                 
-                # Send notification to job seeker
-                job_seeker_user = application.job_seeker.user
-                job_title = application.jobpost.title
-                company_name = job_provider.company_name
-                
-                send_notification(
-                    user=job_seeker_user,
-                    notification_type=Notification.TYPE_APPLICATION_UPDATE,
-                    title=f"Application Updated: {job_title}",
-                    message=f"Your application for {job_title} at {company_name} is now {status_value}",
-                    source_id=str(application.id),
-                    source_type="application"
-                )
+                send_application_status_notification(application)
 
                 serializer = JobApplicationDetailSerializer(application)
                 return Response(serializer.data)

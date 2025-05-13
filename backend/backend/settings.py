@@ -207,6 +207,8 @@ LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Logging Configuration
+import os
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -230,28 +232,35 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'verbose',
         },
+        'console': {
+            'level': 'INFO',  # Show all logs >= INFO
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
-        'backend': {  
-            'handlers': ['file'],
+        'backend': {
+            'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['file'],
+            'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.db.backends': {
-            'handlers': [],
+            'handlers': ['console'],  # Use DEBUG here only if needed
+            'level': 'INFO',
             'propagate': False,
         },
     },
     'root': {
-        'handlers': ['file'],
-        'level': 'WARNING',
+        'handlers': ['file', 'console'],
+        'level': 'INFO',  # Ensures root logs go to console too
     }
 }
+
 
 PUBLIC_JOB_POST_PAGE_SIZE = 12
 PUBLIC_JOB_POST_PAGE_SIZE_QUERY_PARAM = "page_size"

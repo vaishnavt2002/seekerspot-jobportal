@@ -6,6 +6,7 @@ import { getProfile } from './api/authApi';
 import routes from './routes/Index.jsx';
 import './App.css';
 import Loading from './components/Loading.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 
 function App() {
   const dispatch = useDispatch();
@@ -51,6 +52,7 @@ function App() {
 
   return (
     <Router>
+      <NotificationProvider>
       <div className="App">
         <Suspense fallback={<Loading/>}>
           <Routes>
@@ -73,6 +75,7 @@ function App() {
           </Routes>
         </Suspense>
       </div>
+      </NotificationProvider>
     </Router>
   );
 }

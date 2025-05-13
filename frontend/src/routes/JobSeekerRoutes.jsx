@@ -11,6 +11,7 @@ import CommunityChatApp from '../pages/jobseeker/CommunityChatApp';
 import Meeting from '../components/MeetingRoom';
 import AppliedJobs from '../components/jobseeker/AppliedJobs';
 import MeetingRoom from '../components/MeetingRoom';
+import NotificationsPage from '../components/jobseeker/NotificationsPage';
 
 const JobSeekerRoutes = [
   {
@@ -65,7 +66,14 @@ const JobSeekerRoutes = [
           </ProtectedRoute>
         ),
       },  
-      
+      {
+        path: '/notifications',
+        element: (
+          <ProtectedRoute role='job_seeker'>
+            < NotificationsPage/>
+          </ProtectedRoute>
+        ),
+      },  
     ],
   },
   {

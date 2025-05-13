@@ -1,4 +1,4 @@
-# interview_app/views.py
+# This is an update to interview_app/views.py to include notification functionality
 from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,6 +12,7 @@ from auth_app.models import JobProvider
 from django.utils import timezone
 import logging
 from auth_app.models import JobSeeker
+from notification_app.utils import *
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,11 @@ class InterviewScheduleCreateView(APIView):
                 )
             serializer = InterviewScheduleSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save()
+                interview = serializer.save()
+                
+                # Send notification to the job seeker
+                send_interview_scheduled_notification(interview)
+                
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             logger.warning("Invalid interview schedule data: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -100,7 +105,11 @@ class InterviewScheduleUpdateView(APIView):
                 )
             serializer = InterviewScheduleSerializer(interview, data=request.data, partial=True)
             if serializer.is_valid():
-                serializer.save()
+                updated_interview = serializer.save()
+                
+                # Send notification about the update
+                send_interview_updated_notification(updated_interview)
+                
                 logger.info("Interview %s successfully updated by user %s", pk, request.user.username)
                 return Response(serializer.data)
             logger.warning("Invalid interview update data: %s", serializer.errors)
@@ -140,6 +149,10 @@ class InterviewScheduleCancelView(APIView):
                 )
             interview.status = 'CANCELLED'
             interview.save()
+            
+            # Send notification about the cancellation
+            send_interview_cancelled_notification(interview)
+            
             logger.info("Interview %s successfully cancelled", pk)
             serializer = InterviewScheduleSerializer(interview)
             return Response(serializer.data)
@@ -178,6 +191,24 @@ class InterviewScheduleCompleteView(APIView):
             interview.status = 'COMPLETED'
             interview.completed_at = timezone.now()
             interview.save()
+            
+            # Send notification to job seeker about completed interview
+            job_seeker_user = interview.application.job_seeker.user
+            job_title = interview.application.jobpost.title
+            company_name = interview.application.jobpost.job_provider.company_name
+            
+            from notification_app.utils import send_notification
+            from notification_app.models import Notification
+            
+            send_notification(
+                user=job_seeker_user,
+                notification_type=Notification.TYPE_INTERVIEW_UPDATED,
+                title=f"Interview Completed: {job_title}",
+                message=f"Your interview for {job_title} at {company_name} has been marked as completed",
+                source_id=str(interview.id),
+                source_type="interview"
+            )
+            
             serializer = InterviewScheduleSerializer(interview)
             logger.info("Interview %s successfully marked as completed", pk)
             return Response(serializer.data)
