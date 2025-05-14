@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import AdminSidebar from '../components/AdminSidebar'; // Create this
+import AdminSidebar from '../components/admin/AdminSidebar'; // Create this
 
 const AdminLayout = () => (
   <div className="admin-layout flex">

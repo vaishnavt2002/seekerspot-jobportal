@@ -1,23 +1,21 @@
 import React, { useState } from "react";
-import { FaCog, FaBars } from "react-icons/fa";
+import { FaCog, FaBars, FaUserShield } from "react-icons/fa";
 import SeekerSpot from "../SeekerSpot";
 import { useDispatch } from "react-redux";
 import { useNavigate, NavLink } from "react-router-dom";
 import { logout } from "../../api/authApi";
 import { logoutAction } from "../../store/slices/authSlice";
 
-const Sidebar = () => {
+const AdminSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const menuItems = [
-    { name: "Dashboard", path: "/jobprovider/dashboard" },
-    { name: "Job Posts", path: "/jobprovider/job-posts" },
-    { name: "Applicants", path: "/jobprovider/applicants" },
-    { name: "Shortlisted Applicants", path: "/jobprovider/shortlisted" },
-    { name: "Interviews", path: "/interviews" },
-    { name: "Community", path: "/jobprovider/community" },
+    { name: "Dashboard", path: "/admin/dashboard" },
+    { name: "Users", path: "/admin/users" },
+    { name: "Companies", path: "/admin/companies" },
+    { name: "Verify Companies", path: "/admin/verify-companies" },
   ];
 
   const handleLogout = async () => {
@@ -84,9 +82,9 @@ const Sidebar = () => {
           </ul>
         </div>
 
-        {/* Company Profile */}
+        {/* Admin Settings */}
         <NavLink
-          to="/jobprovider/profile"
+          to="/admin/settings"
           onClick={() => setIsOpen(false)}
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium mt-6 ${
@@ -97,7 +95,7 @@ const Sidebar = () => {
           }
         >
           <FaCog />
-          Company Profile
+          Admin Settings
         </NavLink>
       </div>
 
@@ -115,4 +113,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default AdminSidebar;

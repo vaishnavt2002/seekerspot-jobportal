@@ -6,6 +6,7 @@ import JobPostsPage from '../pages/jobprovider/JobPostsPage';
 import ApplicantsPage from '../pages/jobprovider/ApplicantsPage';
 import ShorlistedPage from '../pages/jobseeker/ShorlistedPage';
 import MeetingRoom from '../components/MeetingRoom';
+import CommunityChatApp from '../pages/jobseeker/CommunityChatApp';
 const JobProviderRoutes = [
   {
     path: '/jobprovider',
@@ -48,6 +49,14 @@ const JobProviderRoutes = [
         element: (
           <ProtectedRoute role="job_provider">
             <ShorlistedPage/>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'community',
+        element: (
+          <ProtectedRoute role="job_provider">
+            <CommunityChatApp/>
           </ProtectedRoute>
         ),
       },

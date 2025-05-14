@@ -107,10 +107,14 @@ def send_interview_scheduled_notification(interview):
     job_seeker_user = interview.application.job_seeker.user
     job_title = interview.application.jobpost.title
     company_name = interview.application.jobpost.job_provider.company_name
-    scheduled_time = interview.scheduled_time.strftime("%A, %B %d, %Y at %I:%M %p")
+    
+    # Format date and time separately and then combine them
+    formatted_date = interview.interview_date.strftime("%A, %B %d, %Y")
+    formatted_time = interview.interview_time.strftime("%I:%M %p")
+    formatted_datetime = f"{formatted_date} at {formatted_time}"
     
     title = f"Interview Scheduled: {job_title}"
-    message = f"You have an interview for {job_title} at {company_name} scheduled for {scheduled_time}"
+    message = f"You have an interview for {job_title} at {company_name} scheduled for {formatted_datetime}"
     
     send_notification(
         user=job_seeker_user,
@@ -131,10 +135,14 @@ def send_interview_updated_notification(interview):
     job_seeker_user = interview.application.job_seeker.user
     job_title = interview.application.jobpost.title
     company_name = interview.application.jobpost.job_provider.company_name
-    scheduled_time = interview.scheduled_time.strftime("%A, %B %d, %Y at %I:%M %p")
+    
+    # Format date and time separately and then combine them
+    formatted_date = interview.interview_date.strftime("%A, %B %d, %Y")
+    formatted_time = interview.interview_time.strftime("%I:%M %p")
+    formatted_datetime = f"{formatted_date} at {formatted_time}"
     
     title = f"Interview Rescheduled: {job_title}"
-    message = f"Your interview for {job_title} at {company_name} has been rescheduled to {scheduled_time}"
+    message = f"Your interview for {job_title} at {company_name} has been rescheduled to {formatted_datetime}"
     
     send_notification(
         user=job_seeker_user,
@@ -156,6 +164,7 @@ def send_interview_cancelled_notification(interview):
     job_title = interview.application.jobpost.title
     company_name = interview.application.jobpost.job_provider.company_name
     
+    # No need for scheduled time formatting since we're just notifying of cancellation
     title = f"Interview Cancelled: {job_title}"
     message = f"Your interview for {job_title} at {company_name} has been cancelled"
     
@@ -167,7 +176,6 @@ def send_interview_cancelled_notification(interview):
         source_id=str(interview.id),
         source_type="interview"
     )
-
 def send_job_applied_notification(application):
     """
     Send notification to job provider when someone applies for a job

@@ -24,7 +24,9 @@ class LoginView(APIView):
         password = request.data.get('password')
         user = authenticate(request, email=email, password=password)
         if user:
-            if not user.is_verified:
+            if user.user_type == 'admin':
+                pass
+            elif not user.is_verified:
                 return Response({'error': 'Verification failed. Sign up again'}, status=status.HTTP_403_FORBIDDEN)
             login(request, user)
             refresh = RefreshToken.for_user(user)

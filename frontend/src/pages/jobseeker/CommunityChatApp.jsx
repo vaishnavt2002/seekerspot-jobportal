@@ -263,7 +263,7 @@ const ChatMessage = ({ message, openImageModal, isOwnMessage, isUnread }) => {
       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-[80%] sm:max-w-xs md:max-w-md p-3 rounded-lg ${
+        className={`max-w-[80%] sm:max-w-xs md:max-w-md p-3 rounded-3xl ${
           isOwnMessage
             ? 'bg-blue-500 text-white'
             : isUnread

@@ -56,22 +56,11 @@ const NotificationPanel = ({ onClose }) => {
     onClose();
   };
 
+  // Modified to always navigate to notifications page
   const handleNotificationAction = (notification) => {
+    // Always navigate to the notifications page when clicking any notification
+    navigate('/notifications');
     onClose();
-    
-    // Handle different notification types
-    if (notification.source_type === 'application') {
-      if (notification.notification_type === 'job_applied') {
-        // For job providers - navigate to application details
-        navigate(`/job-provider/applications/${notification.source_id}`);
-      } else {
-        // For job seekers - navigate to their applications
-        navigate('/applications');
-      }
-    } else if (notification.source_type === 'interview') {
-      // Navigate to interview details
-      navigate(`/interviews`);
-    }
   };
 
   return (

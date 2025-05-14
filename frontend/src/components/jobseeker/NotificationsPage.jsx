@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
 import notificationApi from '../../api/notificationApi';
+import notificationSocketService from '../../services/notificationSocketService';
 
 const NotificationsPage = () => {
   const { markAsRead, markAllAsRead } = useNotifications();
@@ -13,63 +14,157 @@ const NotificationsPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const navigate = useNavigate();
 
-  // Fetch notifications
+  // Setup WebSocket handler for new notifications
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const params = { page, page_size: 20 };
-        
-        if (activeTab === 'unread') {
-          params.is_read = false;
-        }
-        
-        const response = await notificationApi.getNotifications(params);
-        
-        // Update state
-        setNotifications(prevNotifications => 
-          page === 1
-            ? response.results || []
-            : [...prevNotifications, ...(response.results || [])]
-        );
-        
-        // Check if we have more pages
-        setHasMore(!!response.next);
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-        setError('Failed to load notifications. Please try again later.');
-      } finally {
-        setLoading(false);
+    console.log('Setting up WebSocket handlers for NotificationsPage');
+    
+    // Function to handle new notifications from WebSocket
+    const handleNewNotification = (notification) => {
+      console.log('New notification received in NotificationsPage:', notification);
+      
+      // Only update if notification belongs in the current view
+      if (activeTab === 'all' || (activeTab === 'unread' && !notification.is_read)) {
+        setNotifications(prevNotifications => {
+          // Check if notification already exists
+          const exists = prevNotifications.some(n => n.id === notification.id);
+          if (exists) return prevNotifications;
+          
+          // Add new notification at the beginning
+          const updatedNotifications = [notification, ...prevNotifications];
+          console.log('Updated notifications list in NotificationsPage:', updatedNotifications);
+          return updatedNotifications;
+        });
       }
     };
 
-    fetchNotifications();
-  }, [page, activeTab]);
+    // Function to handle bulk updates of unread notifications
+    const handleUnreadNotifications = (unreadNotifications) => {
+      console.log('Unread notifications update received in NotificationsPage:', unreadNotifications);
+      
+      if (Array.isArray(unreadNotifications)) {
+        if (activeTab === 'unread') {
+          // Replace entire list for unread tab
+          setNotifications(unreadNotifications.sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          ));
+        } else if (activeTab === 'all') {
+          // Update read status for existing notifications
+          setNotifications(prevNotifications => {
+            // Create a map of received unread notifications
+            const unreadMap = new Map(unreadNotifications.map(n => [n.id, n]));
+            
+            // Update existing notifications and add new ones
+            const existingIds = new Set(prevNotifications.map(n => n.id));
+            const updatedNotifications = [...prevNotifications];
+            
+            // Add new notifications that don't exist in our current list
+            unreadNotifications.forEach(notification => {
+              if (!existingIds.has(notification.id)) {
+                updatedNotifications.unshift(notification);
+              }
+            });
+            
+            return updatedNotifications.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            );
+          });
+        }
+      }
+    };
+
+    // Register WebSocket handlers
+    const newNotificationCleanup = notificationSocketService.onNotification(handleNewNotification);
+    const unreadNotificationsCleanup = notificationSocketService.onUnreadNotifications(handleUnreadNotifications);
+    
+    // Additional handler for when notifications are marked as read
+    const connectionChangeCleanup = notificationSocketService.onConnectionChange(status => {
+      console.log('WebSocket connection status changed in NotificationsPage:', status);
+      if (status === 'CONNECTED') {
+        // Refresh data when socket reconnects
+        fetchNotifications(1);
+      }
+    });
+
+    // Cleanup handlers on unmount
+    return () => {
+      console.log('Cleaning up WebSocket handlers in NotificationsPage');
+      if (newNotificationCleanup) newNotificationCleanup();
+      if (unreadNotificationsCleanup) unreadNotificationsCleanup();
+      if (connectionChangeCleanup) connectionChangeCleanup();
+    };
+  }, [activeTab]);
+
+  // Fetch notifications
+  const fetchNotifications = async (currentPage = 1) => {
+    try {
+      console.log(`Fetching ${activeTab} notifications, page ${currentPage}`);
+      setLoading(true);
+      const params = { page: currentPage, page_size: 20 };
+      
+      if (activeTab === 'unread') {
+        params.is_read = false;
+      }
+      
+      const response = await notificationApi.getNotifications(params);
+      console.log('Notifications API response:', response);
+      
+      // Update state
+      setNotifications(prevNotifications => 
+        currentPage === 1
+          ? response.results || []
+          : [...prevNotifications, ...(response.results || [])]
+      );
+      
+      // Check if we have more pages
+      setHasMore(!!response.next);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setError('Failed to load notifications. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch notifications when tab changes
+  useEffect(() => {
+    console.log('Tab changed, fetching notifications');
+    setPage(1);
+    fetchNotifications(1);
+  }, [activeTab]);
+
+  // Handle pagination
+  useEffect(() => {
+    if (page > 1) {
+      fetchNotifications(page);
+    }
+  }, [page]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {
+      console.log('Loading more notifications');
       setPage(prevPage => prevPage + 1);
     }
   };
 
   const handleTabChange = (tab) => {
+    console.log('Changing tab to:', tab);
     if (tab !== activeTab) {
       setActiveTab(tab);
-      setPage(1);
       setNotifications([]);
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
+      console.log('Marking all notifications as read');
       await markAllAsRead();
       
-      // Refresh notifications if on unread tab
+      // Update notifications in the current list
       if (activeTab === 'unread') {
-        setPage(1);
+        // Clear unread tab
         setNotifications([]);
       } else {
-        // Mark all as read in the current list
+        // Mark all as read in the all tab
         setNotifications(prevNotifications => 
           prevNotifications.map(n => ({ ...n, is_read: true }))
         );
@@ -80,30 +175,30 @@ const NotificationsPage = () => {
     }
   };
 
+  // Modified to only mark as read and not navigate
   const handleNotificationClick = async (notification) => {
     try {
+      console.log('Notification clicked:', notification);
+      
       // Mark as read if needed
       if (!notification.is_read) {
         await markAsRead(notification.id);
         
         // Update the list
-        setNotifications(prevNotifications => 
-          prevNotifications.map(n => 
-            n.id === notification.id ? { ...n, is_read: true } : n
-          )
-        );
+        setNotifications(prevNotifications => {
+          if (activeTab === 'unread') {
+            // Remove from unread tab
+            return prevNotifications.filter(n => n.id !== notification.id);
+          } else {
+            // Mark as read in all tab
+            return prevNotifications.map(n => 
+              n.id === notification.id ? { ...n, is_read: true } : n
+            );
+          }
+        });
       }
       
-      // Navigate based on notification type
-      if (notification.source_type === 'application') {
-        if (notification.notification_type === 'job_applied') {
-          navigate(`/job-provider/applications/${notification.source_id}`);
-        } else {
-          navigate('/applications');
-        }
-      } else if (notification.source_type === 'interview') {
-        navigate('/interviews');
-      }
+      // No navigation - just stay on the current page
     } catch (err) {
       console.error('Error handling notification click:', err);
     }
@@ -375,14 +470,14 @@ const NotificationsPage = () => {
           )}
           
           {/* Load More */}
-          {hasMore && (
+          {hasMore && notifications.length > 0 && (
             <div className="p-4 flex justify-center">
               <button
                 onClick={handleLoadMore}
                 disabled={loading}
                 className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50"
               >
-                {loading ? 'Loading...' : 'Load more'}
+                {loading && page > 1 ? 'Loading...' : 'Load more'}
               </button>
             </div>
           )}

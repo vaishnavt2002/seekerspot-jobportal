@@ -66,6 +66,9 @@ const ProtectedRoute = ({ children, role }) => {
       if (user?.user_type === 'job_provider') {
         return <Navigate to="/jobprovider/dashboard" replace />;
       }
+      if (user?.user_type === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
       return <Navigate to="/" replace />;
     }
   }
