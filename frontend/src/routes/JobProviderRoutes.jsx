@@ -1,6 +1,5 @@
 import JobProviderLayout from '../layouts/JobProviderLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
-import JobProviderDashboard from '../pages/jobprovider/Dashboard';
 import ProfilePage from '../pages/jobprovider/ProfilePage';
 import JobPostsPage from '../pages/jobprovider/JobPostsPage';
 import ApplicantsPage from '../pages/jobprovider/ApplicantsPage';
@@ -8,6 +7,7 @@ import ShorlistedPage from '../pages/jobseeker/ShorlistedPage';
 import MeetingRoom from '../components/MeetingRoom';
 import CommunityChatApp from '../pages/jobseeker/CommunityChatApp';
 import NotificationsPage from '../components/jobseeker/NotificationsPage';
+import JobProviderDashboard from '../components/jobprovider/JobProviderDashboard';
 const JobProviderRoutes = [
   {
     path: '/jobprovider',

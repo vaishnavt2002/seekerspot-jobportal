@@ -7,7 +7,7 @@ const analyticsApi = {
       const response = await axiosInstance.get('/analytics/dashboard-stats/', { 
         params: { period }
       });
-      return response.data;
+      return response;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch dashboard statistics');
     }
@@ -19,7 +19,7 @@ const analyticsApi = {
       const response = await axiosInstance.get('/analytics/user-growth/', { 
         params: { interval, months }
       });
-      return response.data;
+      return response;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch user growth data');
     }
@@ -31,7 +31,7 @@ const analyticsApi = {
       const response = await axiosInstance.get('/analytics/job-post-analytics/', { 
         params: { months }
       });
-      return response.data;
+      return response;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch job post analytics');
     }
@@ -43,11 +43,12 @@ const analyticsApi = {
       const response = await axiosInstance.get('/analytics/application-analytics/', { 
         params: { months }
       });
-      return response.data;
+      return response;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch application analytics');
     }
-  }
+  },
+ 
 };
 
 export default analyticsApi;

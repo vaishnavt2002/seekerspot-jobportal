@@ -1,35 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import analyticsApi from '../../api/analyticsApi';
+import jobProviderApi from '../../api/jobProviderApi';
 import StatCard from './StatCard';
-import UserGrowthChart from './UserGrowthChart';
-import JobPostChart from './JobPostChart';
+import JobActivityChart from './JobActivityChart';
 import ApplicationChart from './ApplicationChart';
 import DistributionChart from './DistributionChart';
+import UpcomingInterviews from './UpcomingInterviews';
 
-export default function AdminDashboard() {
+export default function JobProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statsPeriod, setStatsPeriod] = useState(30);
-  const [growthInterval, setGrowthInterval] = useState('month');
+  const [activityInterval, setActivityInterval] = useState('month');
   // Default to 12 months and don't expose to UI
-  const growthMonths = 12;
+  const activityMonths = 12;
   
   const [dashboardStats, setDashboardStats] = useState({
     total_stats: {
-      users: 0,
-      job_seekers: 0,
-      job_providers: 0,
+      job_posts: 0,
+      active_job_posts: 0,
+      applications: 0,
+      interviews: 0,
+      views: 0,
+    },
+    growth: {
       job_posts: 0,
       applications: 0,
       interviews: 0,
     },
-    growth: {
-      users: 0,
-      job_seekers: 0,
-      job_providers: 0,
-      job_posts: 0,
-      applications: 0,
-      interviews: 0,
+    conversions: {
+      applications_per_job: 0,
     },
     distributions: {
       application_status: [],
@@ -38,33 +37,41 @@ export default function AdminDashboard() {
     }
   });
   
-  const [userGrowthData, setUserGrowthData] = useState({
-    all_users: [],
-    job_seekers: [],
-    job_providers: []
-  });
-  
-  const [jobPostAnalytics, setJobPostAnalytics] = useState({
+  const [jobActivity, setJobActivity] = useState({
     job_posts_over_time: [],
-    job_posts_by_domain: [],
+    applications_over_time: [],
     job_posts_by_type: [],
     job_posts_by_employment: []
   });
   
   const [applicationAnalytics, setApplicationAnalytics] = useState({
-    applications_over_time: [],
-    applications_by_status: [],
     top_job_posts: [],
     conversion_rate: 0,
+    shortlisted_rate: 0,
     rejection_rate: 0,
     total_applications: 0,
     hired_count: 0,
-    rejection_count: 0
+    shortlisted_count: 0,
+    rejection_count: 0,
+    pending_applications: 0,
+    upcoming_interviews: 0,
+    avg_time_to_hire: 'N/A',
+    applications_by_status: []
+  });
+  
+  const [interviewData, setInterviewData] = useState({
+    upcoming_interviews: [],
+    interview_stats: {
+      total: 0,
+      completed: 0,
+      cancelled: 0,
+      scheduled: 0
+    }
   });
 
   useEffect(() => {
     fetchDashboardData();
-  }, [statsPeriod, growthInterval]);
+  }, [statsPeriod, activityInterval]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -72,17 +79,17 @@ export default function AdminDashboard() {
     
     try {
       // Fetch all data in parallel
-      const [statsData, growthData, jobPostData, applicationData] = await Promise.all([
-        analyticsApi.getDashboardStats(statsPeriod),
-        analyticsApi.getUserGrowth(growthInterval, growthMonths),
-        analyticsApi.getJobPostAnalytics(growthMonths),
-        analyticsApi.getApplicationAnalytics(growthMonths)
+      const [statsData, activityData, applicationData, interviewData] = await Promise.all([
+        jobProviderApi.getDashboardStats(statsPeriod),
+        jobProviderApi.getJobActivity(activityInterval, activityMonths),
+        jobProviderApi.getApplicationAnalytics(),
+        jobProviderApi.getUpcomingInterviews()
       ]);
       
       setDashboardStats(statsData);
-      setUserGrowthData(growthData);
-      setJobPostAnalytics(jobPostData);
+      setJobActivity(activityData);
       setApplicationAnalytics(applicationData);
+      setInterviewData(interviewData);
       
     } catch (err) {
       setError(err.message || 'Failed to fetch dashboard data');
@@ -96,11 +103,11 @@ export default function AdminDashboard() {
     setStatsPeriod(parseInt(event.target.value));
   };
 
-  const handleGrowthIntervalChange = (event) => {
-    setGrowthInterval(event.target.value);
+  const handleActivityIntervalChange = (event) => {
+    setActivityInterval(event.target.value);
   };
 
-  if (loading && !dashboardStats.total_stats.users) {
+  if (loading && !dashboardStats.total_stats.job_posts) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
@@ -115,8 +122,8 @@ export default function AdminDashboard() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-          <p className="text-gray-600">Analytics and statistics overview</p>
+          <h1 className="text-2xl font-semibold">Company Dashboard</h1>
+          <p className="text-gray-600">Analytics and job statistics overview</p>
         </div>
       </div>
 
@@ -126,7 +133,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards - First Row */}
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-medium">Statistics Overview</h2>
         <div>
@@ -147,40 +154,7 @@ export default function AdminDashboard() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         <StatCard 
-          title="Users"
-          value={dashboardStats.total_stats.users}
-          growth={dashboardStats.growth.users}
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-            </svg>
-          }
-        />
-        <StatCard 
-          title="Job Seekers"
-          value={dashboardStats.total_stats.job_seekers}
-          growth={dashboardStats.growth.job_seekers}
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-            </svg>
-          }
-        />
-        <StatCard 
-          title="Job Providers"
-          value={dashboardStats.total_stats.job_providers}
-          growth={dashboardStats.growth.job_providers}
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-            </svg>
-          }
-        />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        <StatCard 
-          title="Job Posts"
+          title="Total Job Posts"
           value={dashboardStats.total_stats.job_posts}
           growth={dashboardStats.growth.job_posts}
           icon={
@@ -190,9 +164,9 @@ export default function AdminDashboard() {
           }
         />
         <StatCard 
-          title="Applications"
-          value={dashboardStats.total_stats.applications}
-          growth={dashboardStats.growth.applications}
+          title="Active Job Posts"
+          value={dashboardStats.total_stats.active_job_posts}
+          growth={0} // No growth data for this
           icon={
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -200,7 +174,21 @@ export default function AdminDashboard() {
           }
         />
         <StatCard 
-          title="Interviews"
+          title="Total Applications"
+          value={dashboardStats.total_stats.applications}
+          growth={dashboardStats.growth.applications}
+          icon={
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+          }
+        />
+      </div>
+      
+      {/* Stats Cards - Second Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+        <StatCard 
+          title="Total Interviews"
           value={dashboardStats.total_stats.interviews}
           growth={dashboardStats.growth.interviews}
           icon={
@@ -209,46 +197,60 @@ export default function AdminDashboard() {
             </svg>
           }
         />
+        <StatCard 
+          title="Pending Applications"
+          value={applicationAnalytics.pending_applications}
+          growth={0} // No growth data for this
+          icon={
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          }
+        />
+        <StatCard 
+          title="Applications per Job"
+          value={dashboardStats.conversions.applications_per_job}
+          growth={0} // No growth data for this
+          icon={
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+            </svg>
+          }
+        />
       </div>
 
-      {/* User Growth Chart */}
-      <div className="mb-8 bg-white p-4 rounded-lg shadow border">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">User Growth</h2>
-          <div>
-            <label htmlFor="growthInterval" className="mr-2 text-sm">Interval:</label>
-            <select
-              id="growthInterval"
-              value={growthInterval}
-              onChange={handleGrowthIntervalChange}
-              className="border rounded px-2 py-1 text-sm"
-            >
-              <option value="day">Daily</option>
-              <option value="week">Weekly</option>
-              <option value="month">Monthly</option>
-            </select>
-          </div>
-        </div>
-        <UserGrowthChart data={userGrowthData} interval={growthInterval} />
-      </div>
-
-      {/* Charts Grid */}
+      {/* Charts Grid - First Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Job Posts Chart */}
         <div className="bg-white p-4 rounded-lg shadow border">
-          <h2 className="text-xl font-semibold mb-4">Job Posts Over Time</h2>
-          <JobPostChart data={jobPostAnalytics.job_posts_over_time} />
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Job Posts Over Time</h2>
+            <div>
+              <label htmlFor="activityInterval" className="mr-2 text-sm">Interval:</label>
+              <select
+                id="activityInterval"
+                value={activityInterval}
+                onChange={handleActivityIntervalChange}
+                className="border rounded px-2 py-1 text-sm"
+              >
+                <option value="day">Daily</option>
+                <option value="week">Weekly</option>
+                <option value="month">Monthly</option>
+              </select>
+            </div>
+          </div>
+          <JobActivityChart data={jobActivity.job_posts_over_time} />
         </div>
         
         {/* Applications Chart */}
         <div className="bg-white p-4 rounded-lg shadow border">
           <h2 className="text-xl font-semibold mb-4">Applications Over Time</h2>
-          <ApplicationChart data={applicationAnalytics.applications_over_time} />
+          <ApplicationChart data={jobActivity.applications_over_time} />
         </div>
       </div>
 
       {/* Distribution Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-4 rounded-lg shadow border">
           <h2 className="text-xl font-semibold mb-4">Application Status</h2>
           <DistributionChart 
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-4 rounded-lg shadow border">
           <h2 className="text-xl font-semibold mb-4">Job Post Types</h2>
           <DistributionChart 
-            data={jobPostAnalytics.job_posts_by_type} 
+            data={jobActivity.job_posts_by_type} 
             nameKey="job_type" 
             valueKey="count"
             colors={['#4F46E5', '#10B981', '#F59E0B']}
@@ -295,7 +297,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-4 rounded-lg shadow border">
           <h2 className="text-xl font-semibold mb-4">Employment Types</h2>
           <DistributionChart 
-            data={jobPostAnalytics.job_posts_by_employment} 
+            data={jobActivity.job_posts_by_employment} 
             nameKey="employment_type" 
             valueKey="count"
             colors={['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']}
@@ -350,7 +352,7 @@ export default function AdminDashboard() {
       {/* Application Conversion Metrics */}
       <div className="bg-white p-4 rounded-lg shadow border mb-8">
         <h2 className="text-xl font-semibold mb-4">Application Conversion Metrics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-indigo-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-indigo-800 mb-2">Total Applications</h3>
             <p className="text-3xl font-bold text-indigo-600">{applicationAnalytics.total_applications}</p>
@@ -362,10 +364,47 @@ export default function AdminDashboard() {
             <p className="text-sm text-green-700">{applicationAnalytics.hired_count} candidates hired</p>
           </div>
           
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">Shortlisted Rate</h3>
+            <p className="text-3xl font-bold text-yellow-600">{applicationAnalytics.shortlisted_rate}%</p>
+            <p className="text-sm text-yellow-700">{applicationAnalytics.shortlisted_count} candidates shortlisted</p>
+          </div>
+          
           <div className="bg-red-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-red-800 mb-2">Rejection Rate</h3>
             <p className="text-3xl font-bold text-red-600">{applicationAnalytics.rejection_rate}%</p>
             <p className="text-sm text-red-700">{applicationAnalytics.rejection_count} applications rejected</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Interviews */}
+      <div className="bg-white p-4 rounded-lg shadow border mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Upcoming Interviews</h2>
+        </div>
+        <UpcomingInterviews interviews={interviewData.upcoming_interviews} />
+        
+        {/* Interview Stats */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">Total Interviews</h3>
+            <p className="text-3xl font-bold text-blue-600">{interviewData.interview_stats.total}</p>
+          </div>
+          
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-green-800 mb-2">Completed</h3>
+            <p className="text-3xl font-bold text-green-600">{interviewData.interview_stats.completed}</p>
+          </div>
+          
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">Scheduled</h3>
+            <p className="text-3xl font-bold text-yellow-600">{interviewData.interview_stats.scheduled}</p>
+          </div>
+          
+          <div className="bg-red-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Cancelled</h3>
+            <p className="text-3xl font-bold text-red-600">{interviewData.interview_stats.cancelled}</p>
           </div>
         </div>
       </div>
