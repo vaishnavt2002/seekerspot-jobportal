@@ -18,6 +18,8 @@ const Sidebar = () => {
     { name: "Shortlisted Applicants", path: "/jobprovider/shortlisted" },
     { name: "Interviews", path: "/interviews" },
     { name: "Community", path: "/jobprovider/community" },
+    { name: "Notifications", path: "/jobprovider/notifications" },
+
   ];
 
   const handleLogout = async () => {

@@ -54,7 +54,9 @@ INSTALLED_APPS = [
     'home_feed',
     'channels',
     'community_app',
-    'notification_app'
+    'notification_app',
+    'user_management_app',
+    'dashboard_app',
     ]
 # Channels settings
 ASGI_APPLICATION = 'backend.asgi.application'
@@ -104,8 +106,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173', 'http://localhost:3000',"http://192.168.1.10:5173",
+    'http://localhost:5173', 'http://localhost:3000',"http://192.168.1.10:5173"
 ]
+
+
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
 
 ROOT_URLCONF = 'backend.urls'

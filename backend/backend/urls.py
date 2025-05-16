@@ -28,6 +28,8 @@ urlpatterns = [
     path('api/home/',include('home_feed.urls')),
     path('api/community/', include('community_app.urls')),
     path('api/', include('notification_app.urls')),
+    path('api/admin/', include('user_management_app.urls')),
+    path('api/analytics/', include('dashboard_app.urls')),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT )

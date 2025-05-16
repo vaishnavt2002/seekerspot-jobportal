@@ -22,41 +22,61 @@ class LoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+
+        # First, try to find the user by email
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Check if user is blocked
+        if not user.is_active:
+            return Response(
+                {'error': 'Your account is blocked. Please contact the admin.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Authenticate user only if active
         user = authenticate(request, email=email, password=password)
-        if user:
-            if user.user_type == 'admin':
-                pass
-            elif not user.is_verified:
-                return Response({'error': 'Verification failed. Sign up again'}, status=status.HTTP_403_FORBIDDEN)
-            login(request, user)
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-            cache_key = f"logout_{user.id}"
-            cache.delete(cache_key)
-            response = Response({
-                'access': access_token,
-                'refresh': refresh_token,
-                'user': UserSerializer(user).data
-            })
-            response.set_cookie(
-                key='access_token',
-                value=access_token,
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                max_age=5 * 60
+        if not user:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Check user type and verification
+        if user.user_type == 'admin':
+            pass  # Add admin-specific logic if needed
+        elif not user.is_verified:
+            return Response(
+                {'error': 'Verification failed. Sign up again'},
+                status=status.HTTP_403_FORBIDDEN
             )
-            response.set_cookie(
-                key='refresh_token',
-                value=refresh_token,
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                max_age=24 * 60 * 60
-            )
-            return response
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        login(request, user)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        cache_key = f"logout_{user.id}"
+        cache.delete(cache_key)
+        response = Response({
+            'access': access_token,
+            'refresh': refresh_token,
+            'user': UserSerializer(user).data
+        })
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+            max_age=5 * 60
+        )
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+            max_age=24 * 60 * 60
+        )
+        return response
 class CookieTokenRefreshView(APIView):
     def post(self, request):
         refresh_token = request.COOKIES.get('refresh_token')

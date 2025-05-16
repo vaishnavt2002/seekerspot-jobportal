@@ -26,6 +26,7 @@ const Login = () => {
       dispatch(loginSuccess({ user: response.user }));
       console.log('Login successful:')
       console.log('User data:', response.user);
+      console.log( 'I am the user..........................',response.user);
       const userType = response.user.user_type;
       if (userType === 'job_seeker') navigate('/');
       else if (userType === 'job_provider') navigate('/jobprovider/dashboard');

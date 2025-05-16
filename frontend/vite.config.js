@@ -27,6 +27,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -36,6 +37,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', 
+    
     allowedHosts: ['6d14-103-175-88-59.ngrok-free.app'],
     proxy: {
       '/community': {
