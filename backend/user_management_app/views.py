@@ -8,6 +8,7 @@ import bleach
 from auth_app.models import User, JobSeeker, JobProvider
 from .serializer import JobSeekerAdminSerializer, JobProviderAdminSerializer
 import logging
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +395,19 @@ class JobProviderVerifyView(APIView):
             # Set verification status to true
             job_provider.is_verified = True
             job_provider.save()
+            try:
+                send_mail(
+                    subject='Seekerspot Account Verification Successful',
+                    message='Congratulations! Your Seekerspot job provider account has been verified successfully. '
+                            'You can now log in to your account and start using our services.',
+                    from_email=None,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+                logger.info(f"Verification email sent to job provider {pk}")
+            except Exception as e:
+                # Log the error but don't fail the verification process
+                logger.error(f"Failed to send verification email to job provider {pk}: {str(e)}")
             
             logger.info(f"Job provider {pk} verified by admin {request.user.id}")
             return Response(

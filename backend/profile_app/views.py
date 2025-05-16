@@ -191,3 +191,68 @@ class SavedJobPostView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except SavedJob.DoesNotExist:
             return Response({"error": "Saved job not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+class ResumeView(APIView):
+    permission_classes = [IsAuthenticated, IsJobSeeker]
+    
+    def get(self, request):
+        job_seeker = request.user.job_seeker_profile
+        serializer = ResumeSerializer(job_seeker, context={'request': request})
+        
+        if not job_seeker.resume:
+            return Response(
+                {'detail': 'No resume uploaded yet.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        job_seeker = request.user.job_seeker_profile
+        
+        # Handle file upload
+        if 'resume' not in request.FILES:
+            return Response(
+                {'error': 'No resume file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Check file type
+        resume_file = request.FILES['resume']
+        allowed_types = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
+        content_type = resume_file.content_type
+        
+        if content_type not in allowed_types:
+            return Response(
+                {'error': 'Invalid file type. Please upload a PDF, DOCX, or DOC file.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Check file size (limit to 5MB)
+        if resume_file.size > 5 * 1024 * 1024:
+            return Response(
+                {'error': 'File size exceeds 5MB limit.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Save the file
+        job_seeker.resume = resume_file
+        job_seeker.save()
+        
+        serializer = ResumeSerializer(job_seeker, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def delete(self, request):
+        job_seeker = request.user.job_seeker_profile
+        
+        if not job_seeker.resume:
+            return Response(
+                {'error': 'No resume to delete'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Delete the resume
+        job_seeker.resume = None
+        job_seeker.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)

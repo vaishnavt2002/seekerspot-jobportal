@@ -193,7 +193,37 @@ const profileApi = {
     } catch (error) {
       throw new Error(error.message || 'Failed to delete saved job');
     }
+  },
+  getResume: async () => {
+  try {
+    const response = await axiosInstance.get('/profile/resume/');
+    return response;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to fetch resume.');
   }
+},
+
+uploadResume: async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('resume', file);
+    const response = await axiosInstance.put('/profile/resume/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message || 'Failed to upload resume.');
+  }
+},
+
+deleteResume: async () => {
+  try {
+    const response = await axiosInstance.delete('/profile/resume/');
+    return response;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message || 'Failed to delete resume.');
+  }
+},
 };
 
 export default profileApi;

@@ -325,7 +325,7 @@ class JobPostAnalyticsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class ApplicationAnalyticsView(APIView):
+class AdminApplicationAnalyticsView(APIView):
     """API view for job application analytics"""
     permission_classes = [IsAuthenticated, IsAdminUser]
     

@@ -14,5 +14,6 @@ urlpatterns = [
     path('skills/<int:skill_id>/', JobSeekerSkillDetailView.as_view(), name='jobseeker-skill-detail'),
     path('saved-jobs/', SavedJobPostView.as_view(), name='saved-jobs-list'),
     path('saved-jobs/<int:job_id>/', SavedJobPostView.as_view(), name='saved-job-detail'),
+    path('resume/', ResumeView.as_view(), name='resume'),
 ]
 

@@ -11,6 +11,7 @@ from jobpost_app.models import JobPost
 from auth_app.models import JobProvider
 from django.utils import timezone
 import logging
+from django.core.mail import send_mail
 from auth_app.models import JobSeeker
 from notification_app.utils import *
 
@@ -73,6 +74,57 @@ class InterviewScheduleCreateView(APIView):
                 
                 # Send notification to the job seeker
                 send_interview_scheduled_notification(interview)
+                try:
+                    job_seeker = application.job_seeker
+                    job_seeker_email = job_seeker.user.email
+                    job_seeker_name = f"{job_seeker.user.first_name} {job_seeker.user.last_name}"
+                    job_title = application.jobpost.title
+                    company_name = job_provider.company_name
+                    
+                    # Format the interview date and time
+                    formatted_date = interview.interview_date.strftime("%A, %B %d, %Y")
+                    formatted_time = interview.interview_time.strftime("%I:%M %p")
+                    
+                    # Get interview type
+                    interview_type_display = dict(InterviewSchedule.INTERVIEW_TYPE_CHOICES)[interview.interview_type]
+                    
+                    # Get any additional notes
+                    notes = interview.notes if interview.notes else "No additional notes provided."
+                    
+                    # Get meeting ID
+                    meeting_id = interview.meeting_id
+                    
+                    # Send the email with detailed information
+                    send_mail(
+                        subject=f'Interview Scheduled: {job_title} at {company_name}',
+                        message=f'''Dear {job_seeker_name},
+
+We are pleased to inform you that your application for the position of "{job_title}" at {company_name} has moved forward, and an interview has been scheduled.
+
+Interview Details:
+- Date: {formatted_date}
+- Time: {formatted_time}
+- Type: {interview_type_display}
+- Meeting ID: {meeting_id}
+
+Additional Notes:
+{notes}
+
+
+We look forward to meeting you!
+
+Regards,
+{company_name} Hiring Team
+via Seekerspot
+                        ''',
+                        from_email=None,
+                        recipient_list=[job_seeker_email],
+                        fail_silently=True,
+                    )
+                    logger.info(f"Interview confirmation email sent to {job_seeker_email}")
+                except Exception as e:
+                    # Log the error but don't stop the process
+                    logger.error(f"Failed to send interview email notification: {str(e)}")
                 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             logger.warning("Invalid interview schedule data: %s", serializer.errors)
@@ -103,12 +155,76 @@ class InterviewScheduleUpdateView(APIView):
                     {"error": "You do not have permission to update this interview."},
                     status=status.HTTP_403_FORBIDDEN
                 )
+            original_date = interview.interview_date
+            original_time = interview.interview_time
+            original_type = interview.interview_type
             serializer = InterviewScheduleSerializer(interview, data=request.data, partial=True)
             if serializer.is_valid():
                 updated_interview = serializer.save()
                 
                 # Send notification about the update
-                send_interview_updated_notification(updated_interview)
+                
+                try:
+                    # Check if date, time, or type changed - only send reschedule email if something important changed
+                    is_rescheduled = (
+                        original_date != updated_interview.interview_date or
+                        original_time != updated_interview.interview_time or
+                        original_type != updated_interview.interview_type
+                    )
+                    
+                    if is_rescheduled:
+                        send_interview_updated_notification(updated_interview)
+                        application = updated_interview.application
+                        job_seeker = application.job_seeker
+                        job_seeker_email = job_seeker.user.email
+                        job_seeker_name = f"{job_seeker.user.first_name} {job_seeker.user.last_name}"
+                        job_title = application.jobpost.title
+                        company_name = job_provider.company_name
+                        
+                        # Format the interview date and time
+                        formatted_date = updated_interview.interview_date.strftime("%A, %B %d, %Y")
+                        formatted_time = updated_interview.interview_time.strftime("%I:%M %p")
+                        
+                        # Get interview type
+                        interview_type_display = dict(InterviewSchedule.INTERVIEW_TYPE_CHOICES)[updated_interview.interview_type]
+                        
+                        # Get any additional notes
+                        notes = updated_interview.notes if updated_interview.notes else "No additional notes provided."
+                        
+                        # Get meeting ID
+                        meeting_id = updated_interview.meeting_id
+                        
+                        # Send the email with updated information
+                        send_mail(
+                            subject=f'RESCHEDULED: Interview for {job_title} at {company_name}',
+                            message=f'''Dear {job_seeker_name},
+
+Your interview for the position of "{job_title}" at {company_name} has been rescheduled. Please note the updated details below:
+
+UPDATED Interview Details:
+- Date: {formatted_date}
+- Time: {formatted_time}
+- Type: {interview_type_display}
+- Meeting ID: {meeting_id}
+
+Additional Notes:
+{notes}
+
+
+We apologize for any inconvenience and look forward to meeting you at the rescheduled time.
+
+Regards,
+{company_name} Hiring Team
+via Seekerspot
+                            ''',
+                            from_email=None,
+                            recipient_list=[job_seeker_email],
+                            fail_silently=True,
+                        )
+                        logger.info(f"Interview reschedule notification sent to {job_seeker_email}")
+                except Exception as e:
+                    # Log the error but don't stop the process
+                    logger.error(f"Failed to send interview reschedule notification: {str(e)}")
                 
                 logger.info("Interview %s successfully updated by user %s", pk, request.user.username)
                 return Response(serializer.data)
@@ -152,6 +268,43 @@ class InterviewScheduleCancelView(APIView):
             
             # Send notification about the cancellation
             send_interview_cancelled_notification(interview)
+            try:
+                application = interview.application
+                job_seeker = application.job_seeker
+                job_seeker_email = job_seeker.user.email
+                job_seeker_name = f"{job_seeker.user.first_name} {job_seeker.user.last_name}"
+                job_title = application.jobpost.title
+                company_name = job_provider.company_name
+                
+                # Format the original interview date and time
+                formatted_date = interview.interview_date.strftime("%A, %B %d, %Y")
+                formatted_time = interview.interview_time.strftime("%I:%M %p")
+                
+                # Send the cancellation email
+                send_mail(
+                    subject=f'CANCELLED: Interview for {job_title} at {company_name}',
+                    message=f'''Dear {job_seeker_name},
+
+We regret to inform you that your interview for the position of "{job_title}" at {company_name} scheduled for {formatted_date} at {formatted_time} has been cancelled.
+
+
+
+Your application is still under consideration, and we will contact you if we wish to reschedule the interview. Thank you for your understanding.
+
+If you have any questions, please don't hesitate to contact us.
+
+Regards,
+{company_name} Hiring Team
+via Seekerspot
+                    ''',
+                    from_email=None,
+                    recipient_list=[job_seeker_email],
+                    fail_silently=True,
+                )
+                logger.info(f"Interview cancellation notification sent to {job_seeker_email}")
+            except Exception as e:
+                # Log the error but don't stop the process
+                logger.error(f"Failed to send interview cancellation notification: {str(e)}")
             
             logger.info("Interview %s successfully cancelled", pk)
             serializer = InterviewScheduleSerializer(interview)

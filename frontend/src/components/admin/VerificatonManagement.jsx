@@ -75,6 +75,7 @@ const VerificationModal = ({ isOpen, onClose, onConfirm, jobProvider }) => {
 
 const UnverifiedProviderCard = ({ jobProvider, onVerify }) => {
   const [expanded, setExpanded] = useState(false);
+      const baseUrl = import.meta.env.VITE_BASE_URL;
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -96,7 +97,7 @@ const UnverifiedProviderCard = ({ jobProvider, onVerify }) => {
             {jobProvider.company_logo && (
               <div className="mr-3 flex-shrink-0">
                 <img 
-                  src={jobProvider.company_logo} 
+                  src={`${baseUrl}${jobProvider.company_logo}`} 
                   alt={`${jobProvider.company_name} logo`} 
                   className="h-10 w-10 object-cover rounded"
                 />
@@ -128,7 +129,7 @@ const UnverifiedProviderCard = ({ jobProvider, onVerify }) => {
               {jobProvider.company_logo && (
                 <div className="mb-4">
                   <img 
-                    src={jobProvider.company_logo} 
+                    src={`${baseUrl}${jobProvider.company_logo}`}  
                     alt={`${jobProvider.company_name} logo`} 
                     className="h-32 object-contain border rounded p-1 bg-white"
                   />

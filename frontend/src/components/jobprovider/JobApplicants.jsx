@@ -3,6 +3,7 @@ import jobApi from '../../api/jobApi';
 
 // Sub-component to display applicant details (reused from original)
 const ApplicantDetails = ({ applicant }) => {
+  const baseURL=import.meta.env.VITE_BASE_URL
   return (
     <div className="space-y-4 p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -82,17 +83,23 @@ const ApplicantDetails = ({ applicant }) => {
 
       {/* Actions */}
       <div className="flex space-x-4 pt-2">
-        <button
-          onClick={() => {
-            if (applicant.job_seeker.resume) {
-              window.open(applicant.job_seeker.resume, '_blank');
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300"
-          disabled={!applicant.job_seeker.resume}
-        >
-          Download Resume
-        </button>
+        {applicant.job_seeker.resume ? (
+  <a
+    href={`${baseURL}${applicant.job_seeker.resume}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+  >
+    Download Resume
+  </a>
+) : (
+  <button
+    disabled
+    className="px-4 py-2 bg-blue-300 text-white rounded cursor-not-allowed"
+  >
+    No Resume Available
+  </button>
+)}
       </div>
     </div>
   );

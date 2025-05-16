@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator,EmptyPage
 import logging
 import bleach
+from django.core.mail import send_mail
 from notification_app.utils import send_notification
 from notification_app.models import Notification
 from notification_app.utils import *
@@ -708,6 +709,32 @@ class ApplyForJobView(APIView):
             # Send notification to job provider
             
             send_job_applied_notification(application)
+            try:
+                job_provider = job.job_provider
+                company_name = job_provider.company_name
+                
+                send_mail(
+                    subject=f'Application Submitted: {job.title}',
+                    message=f'''
+Congratulations! Your application for the position of "{job.title}" at {company_name} has been successfully submitted.
+
+Job Details:
+- Position: {job.title}
+- Company: {company_name}
+- Location: {job.location}
+- Salary Range: {job.min_salary} - {job.max_salary} 
+
+You can track the status of your application on your Seekerspot dashboard. We wish you the best of luck with your application!
+
+Regards,
+The Seekerspot Team
+                    ''',
+                    from_email=None,
+                    recipient_list=[request.user.email],
+                    fail_silently=True, 
+                )
+            except Exception as e:
+                print(f"Failed to send application confirmation email: {str(e)}")
             
             serializer = JobApplicationSerializer(application)
             

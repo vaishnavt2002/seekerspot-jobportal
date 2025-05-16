@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from auth_app import serializer
 from .models import *
 from auth_app.models import User
 from profile_app.models import Education, WorkExperience, JobSeekerSkill
@@ -191,6 +193,7 @@ class JobSeekerSerializer(serializers.ModelSerializer):
 class JobPostListSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='job_provider.company_name')
     applicants_count = serializers.SerializerMethodField()
+    resume = serializers.CharField(source='job_seeker.resume', read_only=True)
     
     class Meta:
         model = JobPost

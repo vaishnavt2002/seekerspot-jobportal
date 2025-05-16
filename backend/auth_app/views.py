@@ -49,12 +49,24 @@ class LoginView(APIView):
                 {'error': 'Verification failed. Sign up again'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        elif user.user_type == 'job_provider':
+            try:
+                job_provider = JobProvider.objects.get(user=user)
+                if not job_provider.is_verified:
+                    return Response(
+                        {'error': 'Your account is under verification. You will receive an email after confirmation.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except JobProvider.DoesNotExist:
+                return Response(
+                    {'error': 'Job provider profile not found.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         login(request, user)
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
-        cache_key = f"logout_{user.id}"
-        cache.delete(cache_key)
+        
         response = Response({
             'access': access_token,
             'refresh': refresh_token,
@@ -165,6 +177,18 @@ class VerifyOTPView(APIView):
         serializer = VerifyOTPSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            if user.user_type == 'job_provider':
+                try:
+                    send_mail(
+                        subject='Seekerspot Account Verification Pending',
+                        message='Thank you for verifying your email. Your profile is now pending admin verification. '
+                                'You will receive an email once your account has been verified by our admin team.',
+                        from_email=None,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    print(f"Failed to send admin verification email: {str(e)}")
             return Response({'message': 'Email verified successfully.', 'user': UserSerializer(user).data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     

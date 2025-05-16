@@ -24,7 +24,6 @@ const VerifiedBadge = ({ isVerified }) => {
 const JobProviderCard = ({ jobProvider, onBlockToggle }) => {
   const [expanded, setExpanded] = useState(false);
     const baseUrl = import.meta.env.VITE_BASE_URL;
-    console.log('......',jobProvider)
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {

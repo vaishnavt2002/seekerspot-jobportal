@@ -6,6 +6,7 @@ import Experience from "../../components/jobseeker/Experience";
 import Education from "../../components/jobseeker/Education";
 import SavedJobs from "../../components/jobseeker/SavedJobs";
 import Skill from "../../components/jobseeker/Skill";
+import ResumeUpload from "../../components/jobseeker/ResumeUpload";
 
 const ProfilePage = () => {
       const { loading,isAuthenticated } = useSelector((state) => state.auth);
@@ -67,6 +68,7 @@ const ProfilePage = () => {
     <div className="px-4 sm:px-8 md:px-16 py-8 max-w-screen-xl mx-auto space-y-10">
       <ProfileHeader/>
     <PersonalDetails />
+    <ResumeUpload/>
     <Experience/>
     <Education/>
     <Skill/>

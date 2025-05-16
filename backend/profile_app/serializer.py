@@ -186,3 +186,26 @@ class SavedJobSerializer(serializers.ModelSerializer):
         model = SavedJob
         fields = ['id', 'jobpost', 'job_seeker', 'saved_at']
         
+class ResumeSerializer(serializers.ModelSerializer):
+    filename = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField()
+    uploaded_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobSeeker
+        fields = ['resume', 'filename', 'url', 'uploaded_at']
+        read_only_fields = ['filename', 'url', 'uploaded_at']
+
+    def get_filename(self, obj):
+        if obj.resume:
+            return obj.resume.name.split('/')[-1]
+        return None
+
+    def get_url(self, obj):
+        if obj.resume:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.resume.url) if request else obj.resume.url
+        return None
+    
+    def get_uploaded_at(self, obj):
+        return obj.updated_at
