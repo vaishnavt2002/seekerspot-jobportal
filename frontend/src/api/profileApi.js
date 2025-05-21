@@ -125,13 +125,15 @@ const profileApi = {
   },
 
   updateJobProviderProfile: async (data) => {
-    try {
-      const response = await axiosInstance.put('/profile/job-provider-profile/', data);
-      return response;
-    } catch (error) {
-      throw new Error(error.message || 'Failed to update job provider profile.');
-    }
-  },
+  try {
+    const response = await axiosInstance.put('/profile/job-provider-profile/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }, // Add this line
+    });
+    return response;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to update job provider profile.');
+  }
+},
   getJobSeekerSkills: async () => {
     try {
       const response = await axiosInstance.get('/profile/skills/');

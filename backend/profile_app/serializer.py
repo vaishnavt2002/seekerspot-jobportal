@@ -99,16 +99,22 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         return instance
     
 class JobProviderProfileSerializer(serializers.ModelSerializer):
+    company_logo_url = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = JobProvider
         fields = [
             'company_name',
             'company_logo',
+            'company_logo_url',
             'industry',
             'company_website',
             'description',
             'location',
         ]
+    def get_company_logo_url(self, obj):
+        if obj.company_logo:
+            return obj.company_logo.url
+        return None
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:

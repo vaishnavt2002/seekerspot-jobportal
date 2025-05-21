@@ -96,11 +96,11 @@ class PersonalDetailsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+# views.py
 class ProfilePictureView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-
         user = request.user
         serializer = ProfilePictureSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
@@ -111,7 +111,9 @@ class ProfilePictureView(APIView):
     def delete(self, request):
         user = request.user
         if user.profile_picture:
-            user.profile_picture.delete(save=True)
+            # Set to None rather than calling delete method
+            user.profile_picture = None
+            user.save()
             return Response({"message": "Profile picture removed."}, status=status.HTTP_204_NO_CONTENT)
         return Response({"error": "No profile picture to remove."}, status=status.HTTP_400_BAD_REQUEST)
     

@@ -95,7 +95,7 @@ const ProfileHeader = () => {
     : 'User Name';
   const displayEmail = userData?.email || 'user@example.com';
   const imageUrl = userData?.profile_picture != null
-  ? `http://localhost:8000${userData.profile_picture}`
+  ? userData.profile_picture
   : null;
   
   return (

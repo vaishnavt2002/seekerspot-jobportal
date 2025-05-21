@@ -145,7 +145,7 @@ const ProfileSection = () => {
         <div className="flex flex-col items-start gap-3">
           <label className="block text-sm font-medium">Logo</label>
           <img
-            src={`http://localhost:8000${profile.company_logo}`}
+            src={profile.company_logo_url}
             alt="Company Logo"
             className="h-20 w-auto border rounded-md"
           />
