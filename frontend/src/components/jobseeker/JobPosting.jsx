@@ -15,6 +15,8 @@ const JobPosting = () => {
   const [applyingInProgress, setApplyingInProgress] = useState(false);
   const [applicationError, setApplicationError] = useState(null);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
+  const [showQuestionsModal, setShowQuestionsModal] = useState(false); // New state for questions modal
+  const [answers, setAnswers] = useState([]); // State to store question answers
   const [addingSkills, setAddingSkills] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savingInProgress, setSavingInProgress] = useState(false);
@@ -25,6 +27,16 @@ const JobPosting = () => {
       try {
         const jobResponse = await publicJobApi.getPublicJobPostById(jobId);
         setJob(jobResponse);
+        
+        // Initialize answers for job questions
+        if (jobResponse.questions && jobResponse.questions.length > 0) {
+          setAnswers(
+            jobResponse.questions.map(q => ({
+              question_id: q.id,
+              answer_text: q.question_type === 'YES_NO' ? 'No' : ''
+            }))
+          );
+        }
         
         const skillsResponse = await publicJobApi.getUserSkills();
         setUserSkills(Array.isArray(skillsResponse) ? skillsResponse : []);
@@ -57,17 +69,96 @@ const JobPosting = () => {
     return `₹${min.toLocaleString("en-IN")} - ₹${max.toLocaleString("en-IN")}`;
   };
   
-  const handleApply = async () => {
+  // Handle answer changes
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers(prevAnswers => 
+      prevAnswers.map(a => 
+        a.question_id === questionId ? { ...a, answer_text: value } : a
+      )
+    );
+    
+    // Clear application error when user starts answering
+    if (applicationError) {
+      setApplicationError(null);
+    }
+  };
+  
+  // New approach: Use a state variable to track which step should come next
+  const [nextStep, setNextStep] = useState(null);
+  
+  // Watch for nextStep changes and handle accordingly
+  useEffect(() => {
+    if (nextStep === 'showQuestions') {
+      setShowQuestionsModal(true);
+      setNextStep(null);
+    } else if (nextStep === 'applyDirectly') {
+      handleApplyDirect();
+      setNextStep(null);
+    }
+  }, [nextStep]);
+  
+  // Direct apply function that doesn't involve state changes for modals
+  const handleApplyDirect = async () => {
     setApplyingInProgress(true);
     setApplicationError(null);
     try {
-      await publicJobApi.applyForJob(jobId);
+      await publicJobApi.applyForJob(jobId, answers);
       setApplicationStatus("APPLIED");
     } catch (err) {
       console.error("Error applying:", err);
       setApplicationError(err.message || "Failed to apply for this job. Please try again.");
     } finally {
       setApplyingInProgress(false);
+    }
+  };
+  
+  // Apply via the questions modal
+  const handleApply = async () => {
+    setApplyingInProgress(true);
+    setApplicationError(null);
+    try {
+      // Validate answers if there are questions
+      if (job.questions && job.questions.length > 0) {
+        // Check if all answers are provided
+        const invalidAnswers = answers.filter(a => !a.answer_text.trim());
+        if (invalidAnswers.length > 0) {
+          setApplicationError("Please answer all questions before submitting.");
+          setApplyingInProgress(false);
+          return;
+        }
+      }
+      
+      // Send answers with the application
+      await publicJobApi.applyForJob(jobId, answers);
+      setApplicationStatus("APPLIED");
+      setShowQuestionsModal(false);
+    } catch (err) {
+      console.error("Error applying:", err);
+      setApplicationError(err.message || "Failed to apply for this job. Please try again.");
+    } finally {
+      setApplyingInProgress(false);
+    }
+  };
+  
+  // Check if answers are valid
+  const areAnswersValid = () => {
+    return answers.every(a => a.answer_text.trim() !== '');
+  };
+
+  // New approach for the initial apply button click
+  const handleApplyClick = () => {
+    const missingSkills = getMissingSkills();
+    
+    // If no missing skills and no questions, apply directly
+    if (missingSkills.length === 0) {
+      if (job.questions && job.questions.length > 0) {
+        setShowQuestionsModal(true);
+      } else {
+        handleApplyDirect();
+      }
+    } else {
+      // Show missing skills modal first
+      setShowSkillsModal(true);
     }
   };
   
@@ -127,23 +218,38 @@ const JobPosting = () => {
     }
   };
 
+  // Completely new implementation with a reliable transition flow
   const handleAddSkillsAndApply = async () => {
-    await handleAddSkills();
-    await handleApply();
-    setShowSkillsModal(false);
+    try {
+      setAddingSkills(true);
+      await handleAddSkills();
+      
+      // First close the skills modal
+      setShowSkillsModal(false);
+      
+      // Then schedule what to do next based on whether there are questions
+      if (job.questions && job.questions.length > 0) {
+        setNextStep('showQuestions');
+      } else {
+        setNextStep('applyDirectly');
+      }
+    } catch (err) {
+      console.error("Error in handleAddSkillsAndApply:", err);
+      setApplicationError("There was an error processing your request. Please try again.");
+      setAddingSkills(false);
+    }
   };
   
-  const handleApplyAnyway = async () => {
+  // Completely revised to use the new approach
+  const handleApplyAnyway = () => {
+    // First close the skills modal
     setShowSkillsModal(false);
-    await handleApply();
-  };
-
-  const handleApplyClick = () => {
-    const missingSkills = getMissingSkills();
-    if (missingSkills.length === 0) {
-      handleApply();
+    
+    // Schedule next action
+    if (job.questions && job.questions.length > 0) {
+      setNextStep('showQuestions');
     } else {
-      setShowSkillsModal(true);
+      setNextStep('applyDirectly');
     }
   };
 
@@ -288,7 +394,7 @@ const JobPosting = () => {
           </div>
           <div className="flex justify-between mb-3">
             <span className="font-medium text-gray-700">Experience Level</span>
-            <span className="text-gray-600">{job.experience_level}</span>
+            <span className="text-gray-600">{job.experience_level} years</span>
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-700">Salary</span>
@@ -300,6 +406,16 @@ const JobPosting = () => {
       {applicationError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
           {applicationError}
+        </div>
+      )}
+
+      {/* Application Questions Section */}
+      {job.questions && job.questions.length > 0 && (
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-3">Application Questions</h2>
+          <p className="text-gray-600 mb-4">
+            You will be required to answer {job.questions.length} question{job.questions.length !== 1 ? 's' : ''} when applying for this position.
+          </p>
         </div>
       )}
 
@@ -366,6 +482,89 @@ const JobPosting = () => {
           ))}
         </div>
       </div>
+
+      {/* Job Questions Modal */}
+      {showQuestionsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full border border-gray-200">
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">Application Questions</h3>
+            <p className="mb-4 text-gray-600">
+              Please answer the following questions to complete your application:
+            </p>
+            
+            {applicationError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {applicationError}
+              </div>
+            )}
+            
+            <div className="mb-6 max-h-96 overflow-y-auto">
+              {job.questions.map((question) => (
+                <div key={question.id} className="mb-6">
+                  <label className="block font-medium text-gray-700 mb-2">
+                    {question.question_text}
+                    <span className="ml-1 text-sm text-gray-500">
+                      ({question.question_type === 'YES_NO' ? 'Yes/No Question' : 'Descriptive Question'})
+                    </span>
+                  </label>
+                  
+                  {question.question_type === 'YES_NO' ? (
+                    <div className="flex space-x-4">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name={`question-${question.id}`}
+                          value="Yes"
+                          checked={answers.find(a => a.question_id === question.id)?.answer_text === 'Yes'}
+                          onChange={() => handleAnswerChange(question.id, 'Yes')}
+                          className="mr-2"
+                        />
+                        Yes
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name={`question-${question.id}`}
+                          value="No"
+                          checked={answers.find(a => a.question_id === question.id)?.answer_text === 'No'}
+                          onChange={() => handleAnswerChange(question.id, 'No')}
+                          className="mr-2"
+                        />
+                        No
+                      </label>
+                    </div>
+                  ) : (
+                    <textarea
+                      value={answers.find(a => a.question_id === question.id)?.answer_text || ''}
+                      onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                      className="w-full border rounded px-3 py-2"
+                      rows="3"
+                      required
+                      placeholder="Type your answer here..."
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-between gap-3">
+              <button
+                onClick={() => setShowQuestionsModal(false)}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApply}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-all duration-200"
+                disabled={applyingInProgress || !areAnswersValid()}
+              >
+                {applyingInProgress ? "Submitting..." : "Submit Application"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Missing Skills Modal */}
       {showSkillsModal && (

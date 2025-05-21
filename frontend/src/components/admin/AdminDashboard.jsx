@@ -11,7 +11,6 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [statsPeriod, setStatsPeriod] = useState(30);
   const [growthInterval, setGrowthInterval] = useState('month');
-  // Default to 12 months and don't expose to UI
   const growthMonths = 12;
   
   const [dashboardStats, setDashboardStats] = useState({

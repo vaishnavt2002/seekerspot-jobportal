@@ -116,6 +116,8 @@ const StatusBadge = ({ status }) => {
         return 'bg-purple-100 text-purple-800';
       case 'SHORTLISTED':
         return 'bg-green-100 text-green-800';
+      case 'HIRED':
+        return 'bg-emerald-100 text-emerald-800';
       case 'REJECTED':
         return 'bg-red-100 text-red-800';
       case 'WITHDRAWN':
@@ -289,6 +291,67 @@ const InterviewScheduleForm = ({ applicationId, onSchedule, onCancel, existingIn
   );
 };
 
+// Hire confirmation modal component
+const HireConfirmationModal = ({ applicant, jobPost, onHire, onCancel }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleConfirm = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    
+    const hireData = {
+      application_id: applicant.id,
+      job_id: jobPost.id,
+      // Default values since we're simplifying
+      proposed_salary: applicant.job_seeker.expected_salary || 0,
+      start_date: new Date().toISOString().split('T')[0], // Today
+      notes: null,
+    };
+
+    try {
+      await onHire(hireData);
+    } catch (err) {
+      setError(err.message || 'Failed to hire candidate. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-green-50 rounded-md border border-green-200">
+      <h3 className="text-lg font-semibold text-green-800 mb-4">Hire {applicant.job_seeker.user.first_name} {applicant.job_seeker.user.last_name}</h3>
+      
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 mb-4" role="alert">
+          <p>{error}</p>
+        </div>
+      )}
+      
+      <p className="text-gray-700 mb-4">
+        Are you sure you want to hire this candidate? 
+      </p>
+      
+      <div className="flex space-x-4">
+        <button
+          onClick={handleConfirm}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-green-300"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Processing...' : 'Confirm Hire'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300"
+          disabled={isSubmitting}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Job Post Card Component
 const JobPostCard = ({ 
   jobPost, 
@@ -296,9 +359,12 @@ const JobPostCard = ({
   globalFilters,
   onScheduleInterview,
   onCompleteInterview,
+  onHireCandidate,
   schedulingApplicantId,
+  hiringApplicantId,
   onInterviewUpdateComplete,
   setSchedulingApplicantId,
+  setHiringApplicantId,
   loading
 }) => {
   const [expandedRowId, setExpandedRowId] = useState(null);
@@ -364,6 +430,13 @@ const JobPostCard = ({
         app.job_seeker.expected_salary >= globalFilters.salaryMin
       );
     }
+
+    // Filter for hired status
+    if (globalFilters.applicationStatus === 'HIRED') {
+      filtered = filtered.filter(app => app.status === 'HIRED');
+    } else if (globalFilters.applicationStatus === 'NOT_HIRED') {
+      filtered = filtered.filter(app => app.status !== 'HIRED');
+    }
     
     setFilteredApplicants(filtered);
   }, [applicants, globalFilters]);
@@ -373,6 +446,10 @@ const JobPostCard = ({
     // Close any open interview forms if we're opening a different detail row
     if (schedulingApplicantId && schedulingApplicantId !== id) {
       setSchedulingApplicantId(null);
+    }
+    // Close any open hiring forms if we're opening a different detail row
+    if (hiringApplicantId && hiringApplicantId !== id) {
+      setHiringApplicantId(null);
     }
   };
 
@@ -482,6 +559,9 @@ const JobPostCard = ({
                 Skills Match
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Interview
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -498,12 +578,13 @@ const JobPostCard = ({
                   activeInterview.status === 'RESCHEDULED'
                 );
                 const isCompleted = activeInterview && activeInterview.status === 'COMPLETED';
+                const isHired = applicant.status === 'HIRED';
                 
                 return (
                   <React.Fragment key={applicant.id}>
                     <tr
                       onClick={() => handleRowClick(applicant.id)}
-                      className={`hover:bg-gray-50 cursor-pointer ${expandedRowId === applicant.id ? 'bg-gray-50' : ''}`}
+                      className={`hover:bg-gray-50 cursor-pointer ${expandedRowId === applicant.id ? 'bg-gray-50' : ''} ${isHired ? 'bg-green-50' : ''}`}
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
                         {applicant.job_seeker.user.first_name} {applicant.job_seeker.user.last_name}
@@ -527,6 +608,9 @@ const JobPostCard = ({
                           </div>
                           <span className="ml-2 text-sm">{applicant.skill_match?.match_percentage || 0}%</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <StatusBadge status={applicant.status} />
                       </td>
                       <td className="px-4 py-4">
                         {activeInterview ? (
@@ -560,52 +644,70 @@ const JobPostCard = ({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="space-x-2">
-                          {!hasActiveInterview && !isCompleted && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onScheduleInterview(applicant.id, e);
-                              }}
-                              className="text-blue-600 hover:underline"
-                            >
-                              Schedule Interview
-                            </button>
-                          )}
-                          {hasActiveInterview && (
+                          {!isHired && (
                             <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onScheduleInterview(applicant.id, e);
-                                }}
-                                className="text-blue-600 hover:underline"
-                              >
-                                Update Schedule
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onCompleteInterview(activeInterview.id, e);
-                                }}
-                                className="text-green-600 hover:underline ml-2"
-                              >
-                                Mark Completed
-                              </button>
+                              {!hasActiveInterview && !isCompleted && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onScheduleInterview(applicant.id, e);
+                                  }}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  Schedule Interview
+                                </button>
+                              )}
+                              {hasActiveInterview && (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onScheduleInterview(applicant.id, e);
+                                    }}
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    Update Schedule
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onCompleteInterview(activeInterview.id, e);
+                                    }}
+                                    className="text-green-600 hover:underline ml-2"
+                                  >
+                                    Mark Completed
+                                  </button>
+                                </>
+                              )}
+                              {isCompleted && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHiringApplicantId(applicant.id);
+                                  }}
+                                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Hire Candidate
+                                </button>
+                              )}
                             </>
+                          )}
+                          {isHired && (
+                            <span className="text-green-600 font-medium">Hired</span>
                           )}
                         </div>
                       </td>
                     </tr>
                     {expandedRowId === applicant.id && (
                       <tr className="bg-gray-50">
-                        <td colSpan="7" className="px-0 py-0">
+                        <td colSpan="8" className="px-0 py-0">
                           <ApplicantDetails applicant={applicant} />
                         </td>
                       </tr>
                     )}
                     {schedulingApplicantId === applicant.id && (
                       <tr className="bg-gray-50">
-                        <td colSpan="7" className="px-0 py-0">
+                        <td colSpan="8" className="px-0 py-0">
                           <InterviewScheduleForm
                             applicationId={applicant.id}
                             onSchedule={onInterviewUpdateComplete}
@@ -615,12 +717,24 @@ const JobPostCard = ({
                         </td>
                       </tr>
                     )}
+                    {hiringApplicantId === applicant.id && (
+                      <tr className="bg-gray-50">
+                        <td colSpan="8" className="px-0 py-0">
+                          <HireConfirmationModal
+                            applicant={applicant}
+                            jobPost={jobPost}
+                            onHire={(hireData) => onHireCandidate(hireData)}
+                            onCancel={() => setHiringApplicantId(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                <td colSpan="8" className="px-4 py-4 text-center text-gray-500">
                   No shortlisted applicants match your filter criteria for this job.
                 </td>
               </tr>
@@ -654,13 +768,15 @@ export default function ShortlistedApplicants() {
   const [error, setError] = useState(null);
   const [loadingJobs, setLoadingJobs] = useState({});
   const [schedulingApplicantId, setSchedulingApplicantId] = useState(null);
+  const [hiringApplicantId, setHiringApplicantId] = useState(null);
   
-  // Global filters - removed status filter since we only show shortlisted
+  // Global filters - now with applicationStatus filter
   const [filters, setFilters] = useState({
     experience: 'All',
     searchTerm: '',
     skillMatchThreshold: 0,
     interviewStatus: 'All',
+    applicationStatus: 'All',
     salaryMin: '',
     salaryMax: ''
   });
@@ -671,7 +787,8 @@ export default function ShortlistedApplicants() {
     totalInterviews: 0,
     interviewsScheduled: 0,
     interviewsCompleted: 0,
-    needsScheduling: 0
+    needsScheduling: 0,
+    hired: 0
   });
 
   useEffect(() => {
@@ -689,6 +806,7 @@ export default function ShortlistedApplicants() {
     let interviewsScheduled = 0;
     let interviewsCompleted = 0;
     let needsScheduling = 0;
+    let hired = 0;
 
     // Count applicants and interviews across all jobs
     Object.values(applicantsByJob).forEach(applicants => {
@@ -697,6 +815,11 @@ export default function ShortlistedApplicants() {
       
       // Count interviews and applicants without interviews
       applicants.forEach(app => {
+        // Count hired applicants
+        if (app.status === 'HIRED') {
+          hired++;
+        }
+        
         if (app.interviews && app.interviews.length > 0) {
           totalInterviews += app.interviews.length;
           interviewsScheduled += app.interviews.filter(i => 
@@ -709,11 +832,11 @@ export default function ShortlistedApplicants() {
             i.status === 'SCHEDULED' || i.status === 'RESCHEDULED'
           );
           
-          if (!hasActiveInterview) {
+          if (!hasActiveInterview && app.status !== 'HIRED') {
             needsScheduling++;
           }
-        } else {
-          // No interviews scheduled yet
+        } else if (app.status !== 'HIRED') {
+          // No interviews scheduled yet and not hired
           needsScheduling++;
         }
       });
@@ -724,7 +847,8 @@ export default function ShortlistedApplicants() {
       totalInterviews,
       interviewsScheduled,
       interviewsCompleted,
-      needsScheduling
+      needsScheduling,
+      hired
     });
   };
 
@@ -764,6 +888,8 @@ export default function ShortlistedApplicants() {
       e.stopPropagation();
     }
     setSchedulingApplicantId(prevId => prevId === applicantId ? null : applicantId);
+    // Close any hiring form that might be open
+    setHiringApplicantId(null);
   };
 
   const handleCompleteInterview = async (interviewId, e) => {
@@ -798,6 +924,61 @@ export default function ShortlistedApplicants() {
     } catch (err) {
       setError(err.message || 'Failed to complete interview. Please try again.');
       console.error('Error completing interview:', err);
+    }
+  };
+
+  const handleHireCandidate = async (hireData) => {
+    try {
+      // Update the application status directly without calling the API
+      // We'll modify the client-side state immediately for a better UX
+      const updatedApplicantsByJob = {...applicantsByJob};
+      
+      Object.keys(updatedApplicantsByJob).forEach(jobId => {
+        updatedApplicantsByJob[jobId] = updatedApplicantsByJob[jobId].map(app => {
+          if (app.id === hireData.application_id) {
+            return {
+              ...app,
+              status: 'HIRED',
+              hire_details: {
+                proposed_salary: hireData.proposed_salary,
+                start_date: hireData.start_date,
+                notes: hireData.notes,
+                hired_at: new Date().toISOString()
+              }
+            };
+          }
+          return app;
+        });
+      });
+      
+      // Update state to reflect changes immediately
+      setApplicantsByJob(updatedApplicantsByJob);
+      setHiringApplicantId(null);
+      
+      // Now call the API to update on the server (this is more resilient to network issues)
+      try {
+        await jobApi.updateApplicationStatus(hireData.application_id, {
+          status: 'HIRED',
+          hire_details: {
+            proposed_salary: hireData.proposed_salary,
+            start_date: hireData.start_date,
+            notes: hireData.notes,
+            hired_at: new Date().toISOString()
+          }
+        });
+      } catch (apiError) {
+        // If the API call fails, show an error but don't revert the UI
+        // This prevents flickering and maintains better UX
+        setError('Candidate was hired locally but server update failed. Please refresh to confirm status.');
+        console.error('Error updating server with hired status:', apiError);
+      }
+      
+      // Recalculate stats
+      calculateStats();
+    } catch (err) {
+      setError(err.message || 'Failed to hire candidate. Please try again.');
+      console.error('Error hiring candidate:', err);
+      throw err; // Re-throw to be caught by the modal
     }
   };
 
@@ -843,6 +1024,7 @@ export default function ShortlistedApplicants() {
       searchTerm: '',
       skillMatchThreshold: 0,
       interviewStatus: 'All',
+      applicationStatus: 'All',
       salaryMin: '',
       salaryMax: ''
     });
@@ -864,8 +1046,8 @@ export default function ShortlistedApplicants() {
         </div>
       )}
 
-      {/* Stats Cards - focused on shortlisted applicants */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      {/* Stats Cards - now with hired count */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="text-sm font-medium text-gray-500">Shortlisted Applicants</div>
           <div className="mt-1 text-2xl font-semibold text-green-600">{stats.totalShortlisted}</div>
@@ -884,11 +1066,15 @@ export default function ShortlistedApplicants() {
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="text-sm font-medium text-gray-500">Completed</div>
-          <div className="mt-1 text-2xl font-semibold text-green-600">{stats.interviewsCompleted}</div>
+          <div className="mt-1 text-2xl font-semibold text-purple-600">{stats.interviewsCompleted}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-green-200">
+          <div className="text-sm font-medium text-gray-500">Hired</div>
+          <div className="mt-1 text-2xl font-semibold text-emerald-600">{stats.hired}</div>
         </div>
       </div>
 
-      {/* Filter Section - removed status filter */}
+      {/* Filter Section - added application status filter */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Filter Shortlisted Applicants</h2>
@@ -901,6 +1087,20 @@ export default function ShortlistedApplicants() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Application Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Application Status</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={filters.applicationStatus}
+              onChange={(e) => handleFilterChange('applicationStatus', e.target.value)}
+            >
+              <option value="All">All Statuses</option>
+              <option value="NOT_HIRED">Not Hired</option>
+              <option value="HIRED">Hired</option>
+            </select>
+          </div>
+          
           {/* Interview Status Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Interview Status</label>
@@ -933,7 +1133,9 @@ export default function ShortlistedApplicants() {
               <option value="10+">10+ years</option>
             </select>
           </div>
-          
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -945,9 +1147,7 @@ export default function ShortlistedApplicants() {
               onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
             />
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
           {/* Salary Range */}
           <div className="flex gap-2 items-center">
             <div className="flex-1">
@@ -1017,9 +1217,12 @@ export default function ShortlistedApplicants() {
                 globalFilters={filters}
                 onScheduleInterview={handleScheduleInterview}
                 onCompleteInterview={handleCompleteInterview}
+                onHireCandidate={handleHireCandidate}
                 schedulingApplicantId={schedulingApplicantId}
+                hiringApplicantId={hiringApplicantId}
                 onInterviewUpdateComplete={handleInterviewUpdateComplete}
                 setSchedulingApplicantId={setSchedulingApplicantId}
+                setHiringApplicantId={setHiringApplicantId}
                 loading={loadingJobs[jobPost.id]}
               />
             );

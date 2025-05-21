@@ -28,6 +28,7 @@ class JobPost(models.Model):
         ('TRAINEE', 'Trainee'),
         ('CONTRACT', 'Contract'),
     )
+    
     DOMAIN_CHOICES = (
         ('ACCOUNTING', 'Accounting'),
         ('IT', 'Information Technology'),
@@ -119,5 +120,28 @@ class SavedJob(models.Model):
         return f"{self.job_seeker.user.username} saved {self.jobpost.title}"
 
     
+class JobQuestion(models.Model):
+    QUESTION_TYPE_CHOICES = (
+        ('YES_NO', 'Yes/No Question'),
+        ('DESCRIPTIVE', 'Descriptive Question'),
+    )
+    
+    job_post = models.ForeignKey(JobPost, on_delete=models.CASCADE, related_name='questions')
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Question for {self.job_post.title}: {self.question_text[:50]}"
 
-
+class JobQuestionAnswer(models.Model):
+    question = models.ForeignKey(JobQuestion, on_delete=models.CASCADE, related_name='answers')
+    application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='question_answers')
+    answer_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('question', 'application')
+        
+    def __str__(self):
+        return f"Answer to question {self.question.id} for application {self.application.id}"

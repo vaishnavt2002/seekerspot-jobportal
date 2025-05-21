@@ -84,6 +84,7 @@ const JobSeekerRoutes = [
       </ProtectedRoute>
     ),
   },
+  
 ];
 
 export default JobSeekerRoutes;

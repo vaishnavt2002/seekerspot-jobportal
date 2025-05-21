@@ -229,12 +229,10 @@ class UserGrowthView(APIView):
                         prev_count = filled_data[-1]['count'] if filled_data else 0
                         filled_data.append({'date': current_str, 'count': prev_count})
                     
-                    # Increment date based on interval
                     current_date += delta
                 
                 return filled_data
             
-            # Fill gaps in data
             all_users_data = fill_date_gaps(all_users_data, interval)
             job_seekers_data = fill_date_gaps(job_seekers_data, interval)
             job_providers_data = fill_date_gaps(job_providers_data, interval)

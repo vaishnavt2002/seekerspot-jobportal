@@ -2,8 +2,17 @@ import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const JobActivityChart = ({ data }) => {
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  // Convert string dates to Date objects and ensure consistent formatting
+  const formattedData = Array.isArray(data) ? data.map(item => ({
+    ...item,
+    date: new Date(item.date) // Convert to Date object
+  })) : [];
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    // Parse the date string and format it consistently
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
   const formatYAxis = (value) => {
@@ -34,7 +43,7 @@ const JobActivityChart = ({ data }) => {
   };
 
   // If no data, show a placeholder
-  if (!data || data.length === 0) {
+  if (!formattedData || formattedData.length === 0) {
     return (
       <div className="w-full h-56 flex items-center justify-center bg-gray-50 rounded">
         <p className="text-gray-500">No job post data available</p>
@@ -42,11 +51,14 @@ const JobActivityChart = ({ data }) => {
     );
   }
 
+  // Sort data chronologically to ensure proper chart display
+  const sortedData = [...formattedData].sort((a, b) => new Date(a.date) - new Date(b.date));
+
   return (
     <div className="w-full h-56">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
-          data={data}
+          data={sortedData}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />

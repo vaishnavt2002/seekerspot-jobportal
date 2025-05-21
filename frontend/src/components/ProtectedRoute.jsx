@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children, role }) => {
     };
 
     verifyAuth();
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, user]);
 
   if (loading || isCheckingAuth) {
     return <Loading />;

@@ -49,11 +49,12 @@ const publicJobApi = {
     }
   },
   
-  // Apply for a job
-  applyForJob: async (jobId) => {
+  // Apply for a job with question answers
+  applyForJob: async (jobId, answers = []) => {
     try {
       const response = await axiosInstance.post('/jobseeker/apply/', {
-        jobpost_id: jobId
+        jobpost_id: jobId,
+        answers: answers
       });
       return response;
     } catch (error) {
@@ -79,6 +80,8 @@ const publicJobApi = {
       return { status: "NOT_APPLIED" }; 
     }
   },
+  
+  // Save a job
   saveJob: async (jobId) => {
     try {
       const response = await axiosInstance.post('/jobseeker/saved-jobs/save/', {

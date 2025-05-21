@@ -220,34 +220,26 @@ export default function JobProviderDashboard() {
       </div>
 
       {/* Charts Grid - First Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Job Posts Chart */}
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Job Posts Over Time</h2>
-            <div>
-              <label htmlFor="activityInterval" className="mr-2 text-sm">Interval:</label>
-              <select
-                id="activityInterval"
-                value={activityInterval}
-                onChange={handleActivityIntervalChange}
-                className="border rounded px-2 py-1 text-sm"
-              >
-                <option value="day">Daily</option>
-                <option value="week">Weekly</option>
-                <option value="month">Monthly</option>
-              </select>
-            </div>
-          </div>
-          <JobActivityChart data={jobActivity.job_posts_over_time} />
-        </div>
-        
-        {/* Applications Chart */}
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h2 className="text-xl font-semibold mb-4">Applications Over Time</h2>
-          <ApplicationChart data={jobActivity.applications_over_time} />
-        </div>
-      </div>
+      <div className="mb-3 flex justify-between items-center">
+  <h2 className="text-lg font-medium">Activity Over Time</h2>
+ 
+</div>
+
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  {/* Job Posts Chart */}
+  <div className="bg-white p-4 rounded-lg shadow border">
+    <div className="mb-4">
+      <h2 className="text-xl font-semibold">Job Posts Over Time</h2>
+    </div>
+    <JobActivityChart data={jobActivity.job_posts_over_time} />
+  </div>
+  
+  {/* Applications Chart */}
+  <div className="bg-white p-4 rounded-lg shadow border">
+    <h2 className="text-xl font-semibold mb-4">Applications Over Time</h2>
+    <ApplicationChart data={jobActivity.applications_over_time} />
+  </div>
+</div>
 
       {/* Distribution Charts */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

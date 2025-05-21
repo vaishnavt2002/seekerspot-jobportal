@@ -4,6 +4,7 @@ import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import UserManagement from '../components/admin/UserManagement';
 import JobProviderManagement from '../components/admin/JobProviderManagement';
 import VerificationManagement from '../components/admin/VerificatonManagement';
+import ReportDashboard from '../components/admin/ReportDashboard';
 
 const AdminRoutes = [
   {
@@ -39,6 +40,14 @@ const AdminRoutes = [
         element: (
           <ProtectedRoute role="admin">
             <VerificationManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <ProtectedRoute role="admin">
+            <ReportDashboard />
           </ProtectedRoute>
         ),
       },

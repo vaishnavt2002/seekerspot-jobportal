@@ -5,21 +5,22 @@ import { useDispatch } from "react-redux";
 import { useNavigate, NavLink } from "react-router-dom";
 import { logout } from "../../api/authApi";
 import { logoutAction } from "../../store/slices/authSlice";
+import { useNotifications } from "../../context/NotificationContext";
+import CountBadge from "./CountBadge";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
 
   const menuItems = [
     { name: "Dashboard", path: "/jobprovider/dashboard" },
     { name: "Job Posts", path: "/jobprovider/job-posts" },
     { name: "Applicants", path: "/jobprovider/applicants" },
     { name: "Shortlisted Applicants", path: "/jobprovider/shortlisted" },
-    { name: "Interviews", path: "/interviews" },
     { name: "Community", path: "/jobprovider/community" },
-    { name: "Notifications", path: "/jobprovider/notifications" },
-
+    { name: "Notifications", path: "/jobprovider/notifications", hasBadge: true },
   ];
 
   const handleLogout = async () => {
@@ -31,6 +32,17 @@ const Sidebar = () => {
       console.error("Logout failed:", err);
     }
     setIsOpen(false);
+  };
+
+  // Badge component inline to use context
+  const NotificationBadge = () => {
+    if (unreadCount <= 0) return null;
+    
+    return (
+      <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 inline-flex items-center justify-center">
+        {unreadCount > 99 ? '99+' : unreadCount}
+      </span>
+    );
   };
 
   return (
@@ -57,19 +69,20 @@ const Sidebar = () => {
           </div>
 
           <ul className="space-y-4 mt-4">
-            {menuItems.map(({ name, path }) => (
+            {menuItems.map(({ name, path, hasBadge }) => (
               <li key={name} onClick={() => setIsOpen(false)}>
                 <NavLink
                   to={path}
                   className={({ isActive }) =>
-                    `block px-4 py-2 rounded-lg text-sm font-medium ${
+                    `flex items-center px-4 py-2 rounded-lg text-sm font-medium ${
                       isActive
                         ? "bg-blue-500 text-white"
                         : "text-gray-700 hover:bg-blue-100"
                     }`
                   }
                 >
-                  {name}
+                  <span>{name}</span>
+                  {hasBadge && <CountBadge />}
                 </NavLink>
               </li>
             ))}

@@ -1,15 +1,14 @@
-# reports/urls.py
 from django.urls import path
 from .views import (
-    JobSeekerReportView,
     JobPostReportView,
-    ApplicationsReportView,
-    InterviewsReportView
+    UserReportView,
+    ApplicationReportView,
+    InterviewReportView
 )
 
 urlpatterns = [
-    path('admin/reports/job-seekers/', JobSeekerReportView.as_view(), name='job_seeker_report'),
-    path('admin/reports/job-posts/', JobPostReportView.as_view(), name='job_post_report'),
-    path('admin/reports/applications/', ApplicationsReportView.as_view(), name='applications_report'),
-    path('admin/reports/interviews/', InterviewsReportView.as_view(), name='interviews_report'),
+    path('job-posts/', JobPostReportView.as_view(), name='job-post-reports'),
+    path('users/', UserReportView.as_view(), name='user-reports'),
+    path('applications/', ApplicationReportView.as_view(), name='application-reports'),
+    path('interviews/', InterviewReportView.as_view(), name='interview-reports'),
 ]

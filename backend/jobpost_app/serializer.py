@@ -13,6 +13,15 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skills
         fields = ['id', 'name', 'category']
 
+class JobQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobQuestion
+        fields = ['id', 'question_text', 'question_type', 'created_at']
+
+class JobQuestionAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobQuestionAnswer
+        fields = ['id', 'question', 'answer_text', 'created_at']
 class JobPostSerializer(serializers.ModelSerializer):
     requirements = serializers.ListField(
         child=serializers.CharField(),
@@ -30,6 +39,12 @@ class JobPostSerializer(serializers.ModelSerializer):
     )
     requirements_display = serializers.SerializerMethodField()
     responsibilities_display = serializers.SerializerMethodField()
+    questions = JobQuestionSerializer(many=True, read_only=True)
+    questions_data = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = JobPost
@@ -46,24 +61,49 @@ class JobPostSerializer(serializers.ModelSerializer):
         requirements = validated_data.pop('requirements', [])
         responsibilities = validated_data.pop('responsibilities', [])
         skill_ids = validated_data.pop('skill_ids', [])
+
+        questions_data = validated_data.pop('questions_data', [])
+
         validated_data['requirements'] = '\n'.join(requirements)
         validated_data['responsibilities'] = '\n'.join(responsibilities)
         validated_data['job_provider'] = self.context['request'].user.job_provider_profile
         job_post = super().create(validated_data)
         if skill_ids:
             job_post.skills.set(skill_ids)
+
+        for question_data in questions_data:
+            JobQuestion.objects.create(
+                job_post=job_post,
+                question_text=question_data.get('question_text', ''),
+                question_type=question_data.get('question_type', 'DESCRIPTIVE')
+            )
+        
         return job_post
 
     def update(self, instance, validated_data):
         requirements = validated_data.pop('requirements', None)
         responsibilities = validated_data.pop('responsibilities', None)
         skill_ids = validated_data.pop('skill_ids', None)
+
+        questions_data = validated_data.pop('questions_data', None)
+
         if requirements is not None:
             instance.requirements = '\n'.join(requirements)
         if responsibilities is not None:
             instance.responsibilities = '\n'.join(responsibilities)
         if skill_ids is not None:
             instance.skills.set(skill_ids)
+        if questions_data is not None:
+            # Delete existing questions
+            instance.questions.all().delete()
+            
+            # Create new questions
+            for question_data in questions_data:
+                JobQuestion.objects.create(
+                    job_post=instance,
+                    question_text=question_data.get('question_text', ''),
+                    question_type=question_data.get('question_type', 'DESCRIPTIVE')
+                )
         return super().update(instance, validated_data)
 
 class PublicJobPostSerializer(serializers.ModelSerializer):
@@ -71,6 +111,7 @@ class PublicJobPostSerializer(serializers.ModelSerializer):
     requirements_display = serializers.SerializerMethodField()
     responsibilities_display = serializers.SerializerMethodField()
     skills = SkillSerializer(many=True)
+    questions = serializers.SerializerMethodField()
 
     class Meta:
         model = JobPost
@@ -92,6 +133,7 @@ class PublicJobPostSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "job_provider",
+            "questions",
         ]
 
     def get_job_provider(self, obj):
@@ -105,6 +147,10 @@ class PublicJobPostSerializer(serializers.ModelSerializer):
 
     def get_responsibilities_display(self, obj):
         return obj.responsibilities.split("\n") if obj.responsibilities else []
+        
+    def get_questions(self, obj):
+        questions = JobQuestion.objects.filter(job_post=obj)
+        return JobQuestionSerializer(questions, many=True).data
     
 class JobApplicationSerializer(serializers.ModelSerializer):
     job_title = serializers.SerializerMethodField()
@@ -193,7 +239,6 @@ class JobSeekerSerializer(serializers.ModelSerializer):
 class JobPostListSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='job_provider.company_name')
     applicants_count = serializers.SerializerMethodField()
-    resume = serializers.CharField(source='job_seeker.resume', read_only=True)
     
     class Meta:
         model = JobPost
@@ -293,3 +338,4 @@ class JobSeekerApplicationSerializer(serializers.ModelSerializer):
             'application_deadline': job.application_deadline,
             'skills': SkillSerializer(job.skills.all(), many=True).data,
         }
+    

@@ -1,0 +1,97 @@
+/* Print styles */
+@media print {
+  /* Hide elements that shouldn't be printed */
+  .no-print,
+  button,
+  .react-tabs__tab-list,
+  nav,
+  header,
+  footer {
+    display: none !important;
+  }
+  
+  /* Format the printable container */
+  .print-container {
+    margin: 0;
+    padding: 0.5cm;
+    width: 100%;
+    background-color: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  /* Ensure charts and tables break nicely between pages */
+  table {
+    break-inside: auto;
+  }
+  
+  tr {
+    break-inside: avoid;
+    break-after: auto;
+  }
+  
+  /* Make content more printer-friendly */
+  body {
+    font-size: 12pt;
+    background-color: white !important;
+  }
+  
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+  }
+  
+  /* Ensure background colors and borders print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* Make grid layouts work better in print */
+  .grid {
+    display: block !important;
+  }
+  
+  .grid > div {
+    margin-bottom: 1cm;
+    page-break-inside: avoid;
+    width: 100% !important;
+  }
+  
+  /* Fix chart rendering in print */
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Add page break before specific sections */
+  .page-break-before {
+    page-break-before: always;
+  }
+  
+  /* Each report on a new page */
+  .report-component {
+    page-break-after: always;
+  }
+  
+  /* Hide tab panels that aren't selected */
+  .react-tabs__tab-panel:not(.react-tabs__tab-panel--selected) {
+    display: none !important;
+  }
+  
+  /* Add report title at the top of each page */
+  .report-title {
+    text-align: center;
+    font-size: 18pt;
+    margin-bottom: 1cm;
+  }
+  
+  /* Date stamp for the report */
+  .report-date {
+    text-align: right;
+    font-size: 10pt;
+    color: #666;
+    margin-bottom: 0.5cm;
+  }
+}

@@ -311,6 +311,9 @@ const JobFormModal = ({
   onSkillSearchChange,
   onSkillSelect,
   onSkillRemove,
+  onQuestionChange,
+  addQuestion,
+  removeQuestion, 
   title,
   submitButtonText,
 }) => {
@@ -431,6 +434,77 @@ const JobFormModal = ({
               + Add Responsibility
             </button>
           </div>
+          
+          {/* Job Questions Section */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Job Questions</label>
+            <p className="text-gray-500 text-sm mb-2">
+              Add questions that candidates will be required to answer when applying.
+            </p>
+            
+            {formData.questions && formData.questions.map((question, index) => (
+              <div key={index} className="mb-4 border rounded p-4">
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1" htmlFor={`question-${index}`}>
+                    Question Text
+                  </label>
+                  <input
+                    type="text"
+                    id={`question-${index}`}
+                    value={question.question_text}
+                    onChange={(e) => onQuestionChange(index, 'question_text', e.target.value)}
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.questions && errors.questions[index] ? 'border-red-500' : ''
+                    }`}
+                    placeholder="Enter your question here"
+                    aria-label={`Question ${index + 1}`}
+                  />
+                  {errors.questions && errors.questions[index] && (
+                    <p className="text-red-500 text-sm mt-1">{errors.questions[index]}</p>
+                  )}
+                </div>
+                
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1" htmlFor={`question-type-${index}`}>
+                    Question Type
+                  </label>
+                  <select
+                    id={`question-type-${index}`}
+                    value={question.question_type}
+                    onChange={(e) => onQuestionChange(index, 'question_type', e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    aria-label={`Question ${index + 1} type`}
+                  >
+                    <option value="YES_NO">Yes/No Question</option>
+                    <option value="DESCRIPTIVE">Descriptive Question</option>
+                  </select>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => removeQuestion(index)}
+                  className="mt-2 text-red-600"
+                  aria-label={`Remove question ${index + 1}`}
+                >
+                  Remove Question
+                </button>
+              </div>
+            ))}
+            
+            {errors.questions && typeof errors.questions === 'string' && (
+              <p className="text-red-500 text-sm mt-1 mb-2">{errors.questions}</p>
+            )}
+            
+            <button
+              type="button"
+              onClick={addQuestion}
+              className="text-blue-600"
+              aria-label="Add question"
+            >
+              + Add Question
+            </button>
+          </div>
+          
           <div className="mb-4 relative">
             <label className="block text-sm font-medium mb-1" htmlFor="skills">
               Skills
@@ -721,6 +795,28 @@ const ViewJobModal = ({ isOpen, onClose, job, formatDate }) => {
             <li key={index}>{resp}</li>
           ))}
         </ul>
+        
+        {/* Display Job Questions */}
+        {job.questions && job.questions.length > 0 && (
+          <>
+            <p className="mb-2 mt-4">
+              <strong>Application Questions:</strong>
+            </p>
+            <ul className="list-disc pl-5 mb-4">
+              {job.questions.map((question, index) => (
+                <li key={index} className="mb-2">
+                  <div>
+                    <strong>{question.question_text}</strong> 
+                    <span className="text-gray-500 text-sm ml-2">
+                      ({question.question_type === 'YES_NO' ? 'Yes/No Question' : 'Descriptive Question'})
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        
         <p className="mb-2">
           <strong>Skills:</strong>
         </p>
@@ -822,6 +918,7 @@ const JobPosts = () => {
     max_salary: 0,
     application_deadline: '',
     status: 'DRAFT',
+    questions: [{ question_text: '', question_type: 'DESCRIPTIVE' }], // Added questions array
   });
   const [errors, setErrors] = useState({});
   const [skillSearch, setSkillSearch] = useState('');
@@ -1058,6 +1155,47 @@ const JobPosts = () => {
       skill_ids: formData.skill_ids.filter((id) => id !== skillId),
     });
   };
+  
+  // Question handlers
+  const handleQuestionChange = (index, field, value) => {
+    const updatedQuestions = [...formData.questions];
+    updatedQuestions[index] = {
+      ...updatedQuestions[index],
+      [field]: value,
+    };
+    setFormData({
+      ...formData,
+      questions: updatedQuestions,
+    });
+    
+    // Clear errors for this question if any
+    if (errors.questions && errors.questions[index]) {
+      const newErrors = { ...errors };
+      if (Array.isArray(newErrors.questions)) {
+        newErrors.questions[index] = null;
+        setErrors(newErrors);
+      }
+    }
+  };
+
+  const addQuestion = () => {
+    setFormData({
+      ...formData,
+      questions: [
+        ...formData.questions,
+        { question_text: '', question_type: 'DESCRIPTIVE' },
+      ],
+    });
+  };
+
+  const removeQuestion = (index) => {
+    const updatedQuestions = [...formData.questions];
+    updatedQuestions.splice(index, 1);
+    setFormData({
+      ...formData,
+      questions: updatedQuestions,
+    });
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -1102,6 +1240,25 @@ const JobPosts = () => {
 
     if (formData.experience_level < 0) {
       newErrors.experience_level = 'Experience level cannot be negative';
+    }
+    
+    // Validate questions
+    const questionErrors = [];
+    let hasInvalidQuestion = false;
+    
+    if (formData.questions && formData.questions.length > 0) {
+      formData.questions.forEach((question, index) => {
+        if (!question.question_text.trim()) {
+          if (!questionErrors[index]) {
+            questionErrors[index] = 'Question text is required';
+          }
+          hasInvalidQuestion = true;
+        }
+      });
+      
+      if (hasInvalidQuestion) {
+        newErrors.questions = questionErrors;
+      }
     }
 
     setErrors(newErrors);
@@ -1150,6 +1307,7 @@ const JobPosts = () => {
         application_deadline: formData.application_deadline
           ? new Date(formData.application_deadline).toISOString()
           : null,
+        questions_data: formData.questions.filter(q => q.question_text.trim() !== ''), // Include questions data
       };
       await jobApi.createJobPost(cleanedData);
       setAddModalOpen(false);
@@ -1165,31 +1323,47 @@ const JobPosts = () => {
     }
   };
 
-  const handleEditJob = (job) => {
-    setFormData({
-      title: job.title,
-      description: job.description,
-      requirements: job.requirements_display && job.requirements_display.length > 0 
-        ? job.requirements_display 
-        : [''],
-      responsibilities: job.responsibilities_display && job.responsibilities_display.length > 0 
-        ? job.responsibilities_display 
-        : [''],
-      location: job.location,
-      job_type: job.job_type,
-      employment_type: job.employment_type,
-      skill_ids: job.skills.map((s) => s.id),
-      domain: job.domain,
-      experience_level: job.experience_level,
-      min_salary: job.min_salary,
-      max_salary: job.max_salary,
-      application_deadline: job.application_deadline ? job.application_deadline.split('T')[0] : '',
-      status: job.status,
-    });
-    setSelectedSkills(job.skills);
-    setSelectedJob(job);
-    setEditModalOpen(true);
-    setErrors({});
+  const handleEditJob = async (job) => {
+    // First fetch the job details including questions
+    setIsLoading(true);
+    try {
+      const jobDetail = await jobApi.getJobPost(job.id);
+      
+      // Initialize questions with an empty array if not present
+      const jobQuestions = jobDetail.questions || [];
+      
+      setFormData({
+        title: jobDetail.title,
+        description: jobDetail.description,
+        requirements: jobDetail.requirements_display && jobDetail.requirements_display.length > 0 
+          ? jobDetail.requirements_display 
+          : [''],
+        responsibilities: jobDetail.responsibilities_display && jobDetail.responsibilities_display.length > 0 
+          ? jobDetail.responsibilities_display 
+          : [''],
+        location: jobDetail.location,
+        job_type: jobDetail.job_type,
+        employment_type: jobDetail.employment_type,
+        skill_ids: jobDetail.skills.map((s) => s.id),
+        domain: jobDetail.domain,
+        experience_level: jobDetail.experience_level,
+        min_salary: jobDetail.min_salary,
+        max_salary: jobDetail.max_salary,
+        application_deadline: jobDetail.application_deadline ? jobDetail.application_deadline.split('T')[0] : '',
+        status: jobDetail.status,
+        questions: jobQuestions.length > 0 ? jobQuestions : [{ question_text: '', question_type: 'DESCRIPTIVE' }],
+      });
+      
+      setSelectedSkills(jobDetail.skills);
+      setSelectedJob(jobDetail);
+      setEditModalOpen(true);
+      setErrors({});
+    } catch (error) {
+      console.error('Fetch job details error:', error);
+      alert('Failed to load job details: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditSubmit = async (e) => {
@@ -1205,6 +1379,7 @@ const JobPosts = () => {
         application_deadline: formData.application_deadline
           ? new Date(formData.application_deadline).toISOString()
           : null,
+        questions_data: formData.questions.filter(q => q.question_text.trim() !== ''), // Include questions data
       };
       await jobApi.updateJobPost(selectedJob.id, cleanedData);
       setEditModalOpen(false);
@@ -1279,6 +1454,7 @@ const JobPosts = () => {
       max_salary: 0,
       application_deadline: '',
       status: 'DRAFT',
+      questions: [{ question_text: '', question_type: 'DESCRIPTIVE' }], // Reset questions
     });
     setSelectedSkills([]);
     setSkillSearch('');
@@ -1358,6 +1534,9 @@ const JobPosts = () => {
         onSkillSearchChange={handleSkillSearchChange}
         onSkillSelect={handleSkillSelect}
         onSkillRemove={handleSkillRemove}
+        onQuestionChange={handleQuestionChange}
+        addQuestion={addQuestion}
+        removeQuestion={removeQuestion}
         title="Add New Job Post"
         submitButtonText="Save"
       />
@@ -1381,6 +1560,9 @@ const JobPosts = () => {
         onSkillSearchChange={handleSkillSearchChange}
         onSkillSelect={handleSkillSelect}
         onSkillRemove={handleSkillRemove}
+        onQuestionChange={handleQuestionChange}
+        addQuestion={addQuestion}
+        removeQuestion={removeQuestion}
         title="Edit Job Post"
         submitButtonText="Update"
       />

@@ -2,7 +2,6 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const UserGrowthChart = ({ data, interval }) => {
-  // Make sure we have all data sets with consistent dates
   const mergeAndSortData = () => {
     if (!data || !data.all_users || !data.job_seekers || !data.job_providers) {
       return [];
@@ -17,6 +16,15 @@ const UserGrowthChart = ({ data, interval }) => {
         dateMap[item.date] = { date: item.date };
       }
     });
+
+    // Sort all dates chronologically
+    const sortedDates = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
+
+    // Initialize the merged data with proper cumulative values
+    const mergedData = [];
+    let lastAllUsers = 0;
+    let lastJobSeekers = 0;
+    let lastJobProviders = 0;
 
     // Create lookup objects for each data series
     const allUsersMap = data.all_users.reduce((acc, item) => {
@@ -34,20 +42,24 @@ const UserGrowthChart = ({ data, interval }) => {
       return acc;
     }, {});
 
-    // Merge data from all series into the date map
-    Object.keys(dateMap).forEach(date => {
-      dateMap[date].allUsers = allUsersMap[date] || 0;
-      dateMap[date].jobSeekers = jobSeekersMap[date] || 0;
-      dateMap[date].jobProviders = jobProvidersMap[date] || 0;
+    sortedDates.forEach(date => {
+      lastAllUsers = allUsersMap[date] !== undefined ? allUsersMap[date] : lastAllUsers;
+      lastJobSeekers = jobSeekersMap[date] !== undefined ? jobSeekersMap[date] : lastJobSeekers;
+      lastJobProviders = jobProvidersMap[date] !== undefined ? jobProvidersMap[date] : lastJobProviders;
+
+      mergedData.push({
+        date,
+        allUsers: lastAllUsers,
+        jobSeekers: lastJobSeekers,
+        jobProviders: lastJobProviders
+      });
     });
 
-    // Convert map to array and sort by date
-    return Object.values(dateMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+    return mergedData;
   };
 
   const mergedData = mergeAndSortData();
 
-  // Format the date for display in tooltip based on interval
   const formatDate = (date) => {
     if (!date) return '';
     const dateObj = new Date(date);
@@ -55,7 +67,6 @@ const UserGrowthChart = ({ data, interval }) => {
     if (interval === 'day') {
       return dateObj.toLocaleDateString();
     } else if (interval === 'week') {
-      // Get the first day of the week
       return `Week of ${dateObj.toLocaleDateString()}`;
     } else {
       // For month
@@ -105,7 +116,6 @@ const UserGrowthChart = ({ data, interval }) => {
     return null;
   };
 
-  // Determine how many ticks to show based on data length and interval
   const getTickCount = () => {
     if (!mergedData.length) return 5;
     
@@ -118,7 +128,6 @@ const UserGrowthChart = ({ data, interval }) => {
     }
   };
 
-  // If no data, show a placeholder
   if (!mergedData.length) {
     return (
       <div className="w-full h-64 flex items-center justify-center bg-gray-50 rounded">

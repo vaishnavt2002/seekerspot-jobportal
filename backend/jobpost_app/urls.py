@@ -26,6 +26,12 @@ urlpatterns = [
     path('applications/<int:pk>/', JobApplicationStatusUpdateView.as_view(), name='application-status-update'),
 
     #job seeker applications
-     path('job-seeker/applications/', JobSeekerApplicationsView.as_view(), name='job-seeker-applications'),
+    path('job-seeker/applications/', JobSeekerApplicationsView.as_view(), name='job-seeker-applications'),
+
+    
+    path('job-posts/<int:job_id>/questions/', JobQuestionsView.as_view(), name='job-questions'),
+    path('applications/<int:application_id>/answers/', QuestionAnswersView.as_view(), name='question-answers'),
+
+
 ]
 

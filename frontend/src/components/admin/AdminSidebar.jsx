@@ -16,6 +16,8 @@ const AdminSidebar = () => {
     { name: "Users", path: "/admin/users" },
     { name: "Companies", path: "/admin/companies" },
     { name: "Verify Companies", path: "/admin/verify-companies" },
+    { name: "Reports", path: "/admin/reports" },
+
   ];
 
   const handleLogout = async () => {

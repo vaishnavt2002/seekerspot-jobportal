@@ -674,6 +674,7 @@ class ApplyForJobView(APIView):
 
             job_seeker = JobSeeker.objects.get(user=request.user)
             job_id = request.data.get('jobpost_id')
+            answers = request.data.get('answers', [])
             
             if not job_id:
                 return Response(
@@ -700,15 +701,59 @@ class ApplyForJobView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Check for job questions
+            job_questions = JobQuestion.objects.filter(job_post=job)
+            
+            # If there are questions, validate that all are answered
+            if job_questions.exists():
+                question_ids = set(q.id for q in job_questions)
+                answered_question_ids = set(a.get('question_id') for a in answers if a.get('question_id'))
+                
+                if question_ids != answered_question_ids:
+                    missing_questions = question_ids - answered_question_ids
+                    return Response(
+                        {"error": f"All job questions must be answered. Missing {len(missing_questions)} required question(s)."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Create the application
             application = JobApplication.objects.create(
                 jobpost=job,
                 job_seeker=job_seeker,
                 status="APPLIED"
             )
             
-            # Send notification to job provider
+            # Save the answers if there are any questions
+            if job_questions.exists():
+                for answer_data in answers:
+                    question_id = answer_data.get('question_id')
+                    answer_text = answer_data.get('answer_text', '')
+                    
+                    try:
+                        question = JobQuestion.objects.get(id=question_id, job_post=job)
+                        
+                        # For YES_NO questions, validate the answer
+                        if question.question_type == 'YES_NO' and answer_text not in ['Yes', 'No']:
+                            return Response(
+                                {"error": f"Question '{question.question_text}' requires a Yes or No answer."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        
+                        # Create the answer record
+                        JobQuestionAnswer.objects.create(
+                            question=question,
+                            application=application,
+                            answer_text=answer_text
+                        )
+                    except JobQuestion.DoesNotExist:
+                        return Response(
+                            {"error": f"Invalid question ID: {question_id}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
             
+            # Send notification to job provider
             send_job_applied_notification(application)
+            
             try:
                 job_provider = job.job_provider
                 company_name = job_provider.company_name
@@ -765,6 +810,7 @@ The Seekerspot Team
                 {"error": "Job seeker profile not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+
 class ApplicationStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1020,5 +1066,68 @@ class JobSeekerApplicationsView(APIView):
             logger.error(f"Error fetching job seeker applications: {str(e)}")
             return Response(
                 {"error": f"Server error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class JobQuestionsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, job_id):
+        try:
+            job_post = JobPost.objects.get(id=job_id, is_deleted=False)
+            questions = JobQuestion.objects.filter(job_post=job_post)
+            serializer = JobQuestionSerializer(questions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except JobPost.DoesNotExist:
+            return Response(
+                {'error': 'Job post not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching job questions: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Server error occurred'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class QuestionAnswersView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, application_id):
+        try:
+            # Get application and check if user is the job seeker
+            application = JobApplication.objects.get(id=application_id)
+            
+            if not hasattr(request.user, 'job_seeker_profile') or request.user.job_seeker_profile != application.job_seeker:
+                return Response(
+                    {'error': 'You are not authorized to answer these questions'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Process answers
+            answers_data = request.data.get('answers', [])
+            
+            # Create or update answers
+            for answer_data in answers_data:
+                question_id = answer_data.get('question')
+                answer_text = answer_data.get('answer_text', '')
+                
+                question = JobQuestion.objects.get(id=question_id, job_post=application.jobpost)
+                
+                # Create or update answer
+                JobQuestionAnswer.objects.update_or_create(
+                    question=question,
+                    application=application,
+                    defaults={'answer_text': answer_text}
+                )
+            
+            return Response(
+                {'message': 'Answers submitted successfully'},
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            logger.error(f"Error submitting answers: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Server error occurred'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

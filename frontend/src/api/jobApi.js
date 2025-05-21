@@ -157,6 +157,24 @@ const jobApi = {
       throw new Error(error.response?.data?.error || error.message || 'Failed to fetch job seeker applications');
     }
   },
+  // Add to the existing jobApi object
+getJobQuestions: async (jobId) => {
+  try {
+    const response = await axiosInstance.get(`/job-posts/${jobId}/questions/`);
+    return response;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to fetch job questions');
+  }
+},
+
+submitQuestionAnswers: async (applicationId, answersData) => {
+  try {
+    const response = await axiosInstance.post(`/applications/${applicationId}/answers/`, answersData);
+    return response;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to submit answers');
+  }
+},
 };
 
 export default jobApi;
