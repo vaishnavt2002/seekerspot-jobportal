@@ -175,7 +175,30 @@ const NotificationsPage = () => {
     }
   };
 
-  // Modified to only mark as read and not navigate
+  // Function to determine navigation path based on notification type
+  const getNavigationPath = (notification) => {
+    const { notification_type, source_id, source_type } = notification;
+    
+    switch (notification_type) {
+      case 'application_update':
+      case 'interview_scheduled':
+      case 'interview_updated':
+      case 'interview_cancelled':
+        // Navigate to applied jobs page for all application/interview related notifications
+        return '/my-jobs';
+      
+      case 'job_applied':
+        // This is typically for job providers, but if it's for job seekers, 
+        // navigate to applied jobs page
+        return '/jobprovider/job-posts';
+      
+      default:
+        // For unknown notification types, stay on notifications page
+        return null;
+    }
+  };
+
+  // Updated to mark as read and navigate
   const handleNotificationClick = async (notification) => {
     try {
       console.log('Notification clicked:', notification);
@@ -198,7 +221,15 @@ const NotificationsPage = () => {
         });
       }
       
-      // No navigation - just stay on the current page
+      // Navigate to appropriate page
+      const navigationPath = getNavigationPath(notification);
+      if (navigationPath) {
+        console.log('Navigating to:', navigationPath);
+        navigate(navigationPath);
+      } else {
+        console.log('No navigation path defined for notification type:', notification.notification_type);
+      }
+      
     } catch (err) {
       console.error('Error handling notification click:', err);
     }

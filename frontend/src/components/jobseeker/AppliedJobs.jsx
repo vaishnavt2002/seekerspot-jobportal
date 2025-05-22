@@ -266,7 +266,7 @@ const AppliedJobs = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {application.company_logo ? (
-                        <img src={`${media_url}${application.company_logo}`} alt={`${application.company_name} logo`} className="h-10 w-10 rounded-full mr-3" />
+                        <img src={application.company_logo} alt={`${application.company_name} logo`} className="h-10 w-10 rounded-full mr-3" />
                         ) : (
                           <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
                             <span className="text-sm font-medium text-gray-500">
@@ -463,7 +463,7 @@ const AppliedJobs = () => {
               <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center">
                   {application.company_logo ? (
-                    <img src={`${media_url}${application.company_logo}`} alt={`${application.company_name} logo`} className="h-10 w-10 rounded-full mr-3" />
+                    <img src={application.company_logo} alt={`${application.company_name} logo`} className="h-10 w-10 rounded-full mr-3" />
                   ) : (
                     <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
                       <span className="text-sm font-medium text-gray-500">
