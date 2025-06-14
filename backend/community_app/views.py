@@ -29,7 +29,6 @@ class CommunityListView(APIView):
         for community in communities:
             data = CommunitySerializer(community).data
             
-            # Check if user is a member
             is_member = False
             unread_count = 0
             
@@ -61,7 +60,6 @@ class CommunityListView(APIView):
         serializer = CommunitySerializer(data=request.data)
         if serializer.is_valid():
             community = serializer.save(created_by=request.user)
-            # Automatically add the creator as a member
             CommunityMember.objects.get_or_create(community=community, user=request.user)
             logger.info("Community created and user %s added as member: %s", request.user.username, community.name)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -77,7 +75,6 @@ class CommunityDetailView(APIView):
             community = Community.objects.get(pk=pk)
             serializer = CommunitySerializer(community)
             
-            # Check if user is a member
             is_member = False
             unread_count = 0
             
@@ -87,7 +84,6 @@ class CommunityDetailView(APIView):
                     user=request.user
                 ).exists()
                 
-                # Get unread count
                 if is_member or request.user.user_type == 'admin':
                     read_status, created = UserReadStatus.objects.get_or_create(
                         user=request.user,
@@ -258,7 +254,6 @@ class CommunityMessageListView(APIView):
                 logger.info("Message saved successfully: id=%s, community=%s, sender=%s", 
                            message.id, community_id, request.user.username)
                 
-                # Broadcast the message via WebSocket
                 try:
                     logger.debug("Attempting to broadcast message via WebSocket")
                     channel_layer = get_channel_layer()
@@ -302,7 +297,7 @@ class MarkMessagesReadView(APIView):
 
     def post(self, request):
         community_id = request.data.get('community')
-        message_id = request.data.get('message_id')  # The ID of the last message read
+        message_id = request.data.get('message_id')  
         
         if not community_id:
             return Response(
@@ -333,10 +328,8 @@ class MarkMessagesReadView(APIView):
                         status=status.HTTP_404_NOT_FOUND
                     )
             else:
-                # Otherwise, get the latest message
                 message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
             
-            # Update or create read status
             if message:
                 UserReadStatus.objects.update_or_create(
                     user=request.user,
@@ -417,7 +410,6 @@ class FirstUnreadMessageView(APIView):
             ).first()
             
             if read_status and read_status.last_read_message:
-                # Find first message after the last read
                 first_unread = CommunityMessage.objects.filter(
                     community=community,
                     created_at__gt=read_status.last_read_message.created_at
@@ -432,7 +424,6 @@ class FirstUnreadMessageView(APIView):
                 else:
                     return Response({'has_unread': False})
             else:
-                # If no read status, the first message is the first unread
                 first_message = CommunityMessage.objects.filter(
                     community=community
                 ).order_by('created_at').first()
@@ -457,20 +448,16 @@ class UserReadStatusView(APIView):
         """Get read status for all communities the user is a member of"""
         user = request.user
         
-        # Get all communities the user is a member of
         user_communities = Community.objects.filter(members__user=user)
         
-        # Initialize result list
         result = []
         
         for community in user_communities:
-            # Get or create read status
             read_status, created = UserReadStatus.objects.get_or_create(
                 user=user,
                 community=community
             )
             
-            # Count unread messages
             last_read_msg = read_status.last_read_message
             unread_query = CommunityMessage.objects.filter(community=community)
             
@@ -479,7 +466,6 @@ class UserReadStatusView(APIView):
             
             unread_count = unread_query.count()
             
-            # Add to result
             result.append({
                 'id': read_status.id,
                 'community': community.id,
@@ -503,7 +489,6 @@ class UserReadStatusView(APIView):
         try:
             community = Community.objects.get(id=community_id)
             
-            # Verify user is a member of the community
             is_member = CommunityMember.objects.filter(community=community, user=user).exists()
             if not is_member and user.user_type != 'admin':
                 return Response(
@@ -511,10 +496,8 @@ class UserReadStatusView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # If message_id is provided, use that message
             if message_id:
                 try:
-                    # Validate message_id is an integer
                     try:
                         message_id = int(message_id)
                     except (ValueError, TypeError):
@@ -528,7 +511,6 @@ class UserReadStatusView(APIView):
                         status=status.HTTP_404_NOT_FOUND
                     )
             else:
-                # Otherwise, use the latest message
                 message = CommunityMessage.objects.filter(community=community).order_by('-created_at').first()
                     
             if message:

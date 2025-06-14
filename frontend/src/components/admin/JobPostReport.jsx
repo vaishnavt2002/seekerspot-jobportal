@@ -1,106 +1,20 @@
 import React from 'react';
-import { Bar, Pie, Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement } from 'chart.js';
 import '../../styles/print-styles.css';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale, 
-  LinearScale, 
-  BarElement, 
-  Title, 
-  Tooltip, 
-  Legend, 
-  ArcElement, 
-  PointElement, 
-  LineElement
-);
-
-const JobPostReport = ({ data, timeFilter }) => {
+const JobPostReport = ({ data }) => {
   if (!data) {
-    return <div className="text-gray-500 text-center p-8">Select a time period to load job post report data.</div>;
+    return <div className="text-gray-500 text-center p-8">Loading job post report data...</div>;
   }
 
   const { summary, job_types, employment_types, domains, top_jobs, monthly_trends } = data;
-
-  // Chart data for job types
-  const jobTypeChartData = {
-    labels: job_types.map(item => item.job_type),
-    datasets: [
-      {
-        label: 'Job Posts',
-        data: job_types.map(item => item.count),
-        backgroundColor: ['#4299e1', '#48bb78', '#f6ad55', '#f56565'],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Chart data for employment types
-  const employmentTypeChartData = {
-    labels: employment_types.map(item => item.employment_type),
-    datasets: [
-      {
-        label: 'Job Posts',
-        data: employment_types.map(item => item.count),
-        backgroundColor: ['#4299e1', '#48bb78', '#f6ad55', '#f56565', '#805ad5'],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Chart data for domains
-  const domainChartData = {
-    labels: domains.map(item => item.domain),
-    datasets: [
-      {
-        label: 'Job Posts',
-        data: domains.map(item => item.count),
-        backgroundColor: ['#4299e1', '#48bb78', '#f6ad55', '#f56565', '#805ad5', '#ed64a6', '#ecc94b', '#a0aec0'],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Chart data for monthly trends
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const trendChartData = {
-    labels: monthly_trends.map(item => monthNames[item.month - 1]),
-    datasets: [
-      {
-        label: 'New Job Posts',
-        data: monthly_trends.map(item => item.count),
-        borderColor: '#4299e1',
-        backgroundColor: 'rgba(66, 153, 225, 0.2)',
-        tension: 0.3,
-        fill: true,
-      },
-    ],
-  };
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Get time period text for display
-  const getTimePeriodText = () => {
-    switch(timeFilter) {
-      case 'today':
-        return 'Today';
-      case 'week':
-        return 'Last 7 Days';
-      case 'month':
-        return 'Last 30 Days';
-      case 'year':
-        return 'Last 365 Days';
-      default:
-        return 'All Time';
-    }
-  };
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow print-container">
-      <div className="flex justify-between items-center mb-6 no-print">
+    <div className="bg-white rounded-lg shadow print-container">
+      <div className="flex justify-between items-center mb-6 no-print px-4 pt-4">
         <h2 className="text-xl font-semibold">Job Posts Report</h2>
         <button 
           onClick={handlePrint} 
@@ -111,13 +25,13 @@ const JobPostReport = ({ data, timeFilter }) => {
       </div>
 
       {/* Report Title for print */}
-      <div className="hidden print:block report-title">
-        <h1>Job Posts Report - {getTimePeriodText()}</h1>
+      <div className="hidden print:block report-title mb-4 text-center">
+        <h1 className="text-2xl font-bold">Job Posts Report</h1>
         <p className="text-sm text-gray-500">Generated on: {new Date().toLocaleDateString()}</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 px-4">
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <div className="text-sm font-medium text-blue-800">Total Job Posts</div>
           <div className="mt-1 text-2xl font-semibold">{summary.total_job_posts}</div>
@@ -137,9 +51,9 @@ const JobPostReport = ({ data, timeFilter }) => {
       </div>
 
       {/* Salary Information */}
-      <div className="mb-6 p-4 border rounded-lg">
+      <div className="mb-6 px-4">
         <h3 className="text-lg font-medium mb-2">Average Salary Ranges</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
           <div>
             <p className="text-sm text-gray-600">Average Minimum Salary</p>
             <p className="text-xl font-semibold">₹{Math.round(summary.avg_min_salary || 0).toLocaleString()}</p>
@@ -151,59 +65,138 @@ const JobPostReport = ({ data, timeFilter }) => {
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="p-4 border rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Job Posts by Job Type</h3>
-          <div className="h-64">
-            <Pie data={jobTypeChartData} options={{ maintainAspectRatio: false }} />
-          </div>
+      {/* Job Types Table */}
+      <div className="mb-6 px-4">
+        <h3 className="text-lg font-medium mb-4">Job Posts by Job Type</h3>
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="min-w-full bg-white">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-2 px-4 border-b text-left">Job Type</th>
+                <th className="py-2 px-4 border-b text-left">Count</th>
+                <th className="py-2 px-4 border-b text-left">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {job_types.map((item, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="py-2 px-4 border-b">{item.job_type}</td>
+                  <td className="py-2 px-4 border-b">{item.count}</td>
+                  <td className="py-2 px-4 border-b">
+                    {summary.total_job_posts > 0 ? ((item.count / summary.total_job_posts) * 100).toFixed(1) : 0}%
+                  </td>
+                </tr>
+              ))}
+              {job_types.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="py-4 text-center text-gray-500">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        <div className="p-4 border rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Job Posts by Employment Type</h3>
-          <div className="h-64">
-            <Pie data={employmentTypeChartData} options={{ maintainAspectRatio: false }} />
-          </div>
+      </div>
+
+      {/* Employment Types Table */}
+      <div className="mb-6 px-4">
+        <h3 className="text-lg font-medium mb-4">Job Posts by Employment Type</h3>
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="min-w-full bg-white">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-2 px-4 border-b text-left">Employment Type</th>
+                <th className="py-2 px-4 border-b text-left">Count</th>
+                <th className="py-2 px-4 border-b text-left">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employment_types.map((item, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="py-2 px-4 border-b">{item.employment_type}</td>
+                  <td className="py-2 px-4 border-b">{item.count}</td>
+                  <td className="py-2 px-4 border-b">
+                    {summary.total_job_posts > 0 ? ((item.count / summary.total_job_posts) * 100).toFixed(1) : 0}%
+                  </td>
+                </tr>
+              ))}
+              {employment_types.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="py-4 text-center text-gray-500">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        <div className="p-4 border rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Job Posts by Domain</h3>
-          <div className="h-64">
-            <Bar 
-              data={domainChartData} 
-              options={{ 
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-              }} 
-            />
-          </div>
+      </div>
+
+      {/* Domains Table */}
+      <div className="mb-6 px-4">
+        <h3 className="text-lg font-medium mb-4">Job Posts by Domain</h3>
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="min-w-full bg-white">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-2 px-4 border-b text-left">Domain</th>
+                <th className="py-2 px-4 border-b text-left">Count</th>
+                <th className="py-2 px-4 border-b text-left">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {domains.map((item, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="py-2 px-4 border-b">{item.domain}</td>
+                  <td className="py-2 px-4 border-b">{item.count}</td>
+                  <td className="py-2 px-4 border-b">
+                    {summary.total_job_posts > 0 ? ((item.count / summary.total_job_posts) * 100).toFixed(1) : 0}%
+                  </td>
+                </tr>
+              ))}
+              {domains.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="py-4 text-center text-gray-500">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        <div className="p-4 border rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Monthly Job Posting Trend</h3>
-          <div className="h-64">
-            <Line 
-              data={trendChartData} 
-              options={{ 
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    title: {
-                      display: true,
-                      text: 'Number of Job Posts'
-                    }
-                  }
-                }
-              }} 
-            />
-          </div>
+      </div>
+
+      {/* Monthly Trends Table - page break before in print mode */}
+      <div className="mb-6 px-4 print:page-break-before">
+        <h3 className="text-lg font-medium mb-4">Monthly Job Posting Trend</h3>
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="min-w-full bg-white">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-2 px-4 border-b text-left">Month</th>
+                <th className="py-2 px-4 border-b text-left">Job Posts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthly_trends.map((item, index) => {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                return (
+                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="py-2 px-4 border-b">{monthNames[item.month - 1]}</td>
+                    <td className="py-2 px-4 border-b">{item.count}</td>
+                  </tr>
+                );
+              })}
+              {monthly_trends.length === 0 && (
+                <tr>
+                  <td colSpan="2" className="py-4 text-center text-gray-500">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Top Jobs Table - page break before in print mode */}
-      <div className="mb-6 page-break-before">
+      <div className="mb-6 px-4 print:page-break-before">
         <h3 className="text-lg font-medium mb-4">Top Jobs by Application Count</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border rounded-lg">
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="min-w-full bg-white">
             <thead className="bg-gray-50">
               <tr>
                 <th className="py-2 px-4 border-b text-left">Job Title</th>

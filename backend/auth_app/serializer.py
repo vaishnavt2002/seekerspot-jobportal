@@ -16,7 +16,7 @@ class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES)
     company_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    company_website = serializers.URLField(required=False, allow_blank=True, allow_null=True)  # Add allow_null=True
+    company_website = serializers.URLField(required=False, allow_blank=True, allow_null=True) 
     description = serializers.CharField(required=False, allow_blank=True)
     company_logo = serializers.ImageField(required=False, allow_null=True)
     industry = serializers.CharField(max_length=100, required=False, allow_blank=True)
@@ -138,5 +138,5 @@ class VerifyOTPSerializer(serializers.Serializer):
         user = User.objects.get(email=email)
         user.is_verified = True
         user.save()
-        cache.delete(f"verification_otp_{email}")  # Clear OTP
+        cache.delete(f"verification_otp_{email}") 
         return user

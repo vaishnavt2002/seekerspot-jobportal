@@ -44,7 +44,7 @@ const JobProviderCard = ({ jobProvider, onBlockToggle }) => {
             {jobProvider.company_logo && (
               <div className="mr-3 flex-shrink-0">
                 <img 
-                  src={`${baseUrl}${jobProvider.company_logo}`} 
+                  src={jobProvider.company_logo_url}
                   alt={`${jobProvider.company_name} logo`} 
                   className="h-10 w-10 object-contain rounded"
                 />
@@ -77,7 +77,7 @@ const JobProviderCard = ({ jobProvider, onBlockToggle }) => {
               {jobProvider.company_logo && (
                 <div className="mb-4">
                   <img 
-                    src={`${baseUrl}${jobProvider.company_logo}`}
+                    src={jobProvider.company_logo_url}
                     alt={`${jobProvider.company_name} logo`} 
                     className="h-32 object-contain border rounded p-1 bg-white"
                   />

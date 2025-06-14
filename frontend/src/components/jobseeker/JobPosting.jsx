@@ -294,7 +294,7 @@ const JobPosting = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div className="flex items-center space-x-4">
             <img
-              src={`http://localhost:8000${job.job_provider.company_logo}`}
+              src={job.job_provider.company_logo}
               alt={`${job.job_provider.company_name} Logo`}
               className="w-16 h-16 object-contain rounded-md border border-gray-200"
             />

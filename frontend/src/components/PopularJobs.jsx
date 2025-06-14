@@ -27,7 +27,7 @@ export default function PopularJobs({ jobs, loading }) {
                 <div className="flex items-center gap-4 mb-4">
                   {job.company_logo ? (
                     <img 
-                      src={baseURL+job.company_logo} 
+                      src={job.company_logo} 
                       alt={job.company} 
                       className="h-10 w-10 object-contain rounded-md"
                     />

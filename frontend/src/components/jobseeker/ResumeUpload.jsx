@@ -22,14 +22,14 @@ const ResumeUpload = () => {
       setIsUpdateMode(false);
     } catch (err) {
       if (err.response?.status === 404) {
-        // No resume found, not an error
         setResume(null);
+        setError('No resume found. You can upload one below.');
       } else if (err.message.includes('Job seeker profile not found')) {
         setError('Please complete your job seeker profile to manage your resume.');
       } else {
         setError(err.message);
       }
-      console.error(err);
+      console.error('No resume found. You can upload one below.');
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ const ResumeUpload = () => {
             </div>
             <div className="flex gap-2">
               <a
-                href={resume.url}
+                href={resume.url_download}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition"

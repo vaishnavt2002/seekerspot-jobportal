@@ -12,5 +12,6 @@ urlpatterns = [
     path('send-verification-otp/', SendVerificationOTPView.as_view(), name='send_verification_otp'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify_otp'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh_cookie'),
+    path('google/', GoogleAuthView.as_view(), name='google_auth'),
 
 ]

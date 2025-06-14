@@ -4,18 +4,28 @@ import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authS
 import { login } from '../../api/authApi';
 import { useNavigate } from 'react-router-dom';
 import Loading from '../Loading';
+import { GoogleLogin } from '@react-oauth/google';
+import axiosInstance from '../../api/axiosInstance';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [showGoogleButton, setShowGoogleButton] = useState(true);
   const dispatch = useDispatch();
   const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    
+    // Hide Google button if user starts typing in job provider credentials
+    if (e.target.name === 'email' && e.target.value.includes('@company')) {
+      setShowGoogleButton(false);
+    } else {
+      setShowGoogleButton(true);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,6 +47,27 @@ const Login = () => {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    dispatch(loginStart());
+    try {
+      // Send the token to your backend
+      const response = await axiosInstance.post('/auth/google/', {
+        token: credentialResponse.credential,
+        user_type: 'job_seeker' // Explicitly set user_type to job_seeker
+      });
+      
+      dispatch(loginSuccess({ user: response.user }));
+      navigate('/');
+    } catch (err) {
+      console.error('Google login error:', err);
+      dispatch(loginFailure(err?.fieldErrors?.error || 'Google login failed'));
+    }
+  };
+
+  const handleGoogleError = () => {
+    dispatch(loginFailure('Google sign in was unsuccessful'));
+  };
+
   return (
     <div className="flex justify-center min-h-screen items-center bg-gray-100">
       {loading ? (
@@ -46,6 +77,31 @@ const Login = () => {
           <h2 className="text-center text-2xl font-bold mb-5">Login</h2>
           {isAuthenticated && <p className="text-green-600 text-sm mb-2 text-center">Login successful!</p>}
           {error && <p className="text-red-600 text-sm mb-2 text-center">{error}</p>}
+          
+          {/* Google Sign-In Button for Job Seekers */}
+          {showGoogleButton && (
+            <div className="mb-4">
+              <p className="text-center text-sm text-gray-600 mb-2">Job Seekers can sign in with Google</p>
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                  theme="outline"
+                  text="signin_with"
+                  shape="rectangular"
+                  logo_alignment="center"
+                />
+              </div>
+              <div className="flex items-center my-4">
+                <hr className="flex-1 border-t border-gray-300" />
+                <span className="px-3 text-gray-500 text-sm">OR</span>
+                <hr className="flex-1 border-t border-gray-300" />
+              </div>
+            </div>
+          )}
+          
+          {/* Regular Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -77,13 +133,14 @@ const Login = () => {
               Login
             </button>
           </form>
+          
           <p>
             <button
               className="text-blue-600 hover:underline w-full pt-2"
               onClick={() => navigate('/signup')}
               style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
             >
-              Don’t have an account? Sign up
+              Don't have an account? Sign up
             </button>
             <button
               className="text-blue-600 hover:underline w-full pt-2"
@@ -97,8 +154,8 @@ const Login = () => {
               onClick={() => navigate('/')}
               style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
             >
-                Go home
-              </button>
+              Go home
+            </button>
           </p>
         </div>
       )}

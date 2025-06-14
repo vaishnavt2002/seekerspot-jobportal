@@ -13,12 +13,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AdminDashboardStatsView(APIView):
-    """API view for admin dashboard statistics"""
+
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get(self, request):
         try:
-            # Get time period from query params (default: last 30 days)
             period = request.query_params.get('period', '30')
             
             try:
@@ -44,7 +43,7 @@ class AdminDashboardStatsView(APIView):
             total_job_applications = JobApplication.objects.count()
             total_interviews = InterviewSchedule.objects.count()
             
-            # Recent stats (within the specified period)
+            # Recent stats
             new_users = User.objects.filter(created_at__gte=time_threshold).count()
             new_job_seekers = JobSeeker.objects.filter(created_at__gte=time_threshold).count()
             new_job_providers = JobProvider.objects.filter(created_at__gte=time_threshold).count()
@@ -52,11 +51,10 @@ class AdminDashboardStatsView(APIView):
             new_job_applications = JobApplication.objects.filter(applied_at__gte=time_threshold).count()
             new_interviews = InterviewSchedule.objects.filter(created_at__gte=time_threshold).count()
             
-            # Growth percentages
-            # Calculate safely to avoid division by zero
+
             def calculate_growth(total, new):
                 if total - new == 0:
-                    return 100.0  # If all are new, growth is 100%
+                    return 100.0
                 return round((new / (total - new)) * 100, 2) if total - new > 0 else 0
                 
             user_growth = calculate_growth(total_users, new_users)
@@ -85,7 +83,6 @@ class AdminDashboardStatsView(APIView):
                 count=Count('id')
             ).order_by('-count')
             
-            # Return all stats
             return Response({
                 'total_stats': {
                     'users': total_users,
@@ -116,9 +113,7 @@ class AdminDashboardStatsView(APIView):
                 {'error': 'Server error occurred'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class UserGrowthView(APIView):
-    """API view for user growth data over time"""
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get(self, request):
@@ -142,15 +137,13 @@ class UserGrowthView(APIView):
                 
             time_threshold = datetime.now() - timedelta(days=30 * months_int)
             
-            # Select the appropriate truncation function based on interval
             if interval == 'week':
                 trunc_func = TruncWeek
             elif interval == 'day':
                 trunc_func = TruncDay
-            else:  # Default to month
+            else: 
                 trunc_func = TruncMonth
             
-            # Get user growth data - for each time period (day/week/month)
             all_users = User.objects.filter(
                 created_at__gte=time_threshold
             ).annotate(
@@ -177,7 +170,6 @@ class UserGrowthView(APIView):
                 count=Count('id')
             ).order_by('period')
             
-            # Get cumulative growth (running total by date)
             def get_cumulative_data(data):
                 cumulative_data = []
                 running_total = 0
@@ -189,12 +181,10 @@ class UserGrowthView(APIView):
                     })
                 return cumulative_data
             
-            # Format data for the frontend
             all_users_data = get_cumulative_data(all_users)
             job_seekers_data = get_cumulative_data(job_seekers)
             job_providers_data = get_cumulative_data(job_providers)
             
-            # Fill in gaps in the data (days, weeks, or months with no new users)
             def fill_date_gaps(data, interval):
                 if not data:
                     return []
@@ -202,30 +192,24 @@ class UserGrowthView(APIView):
                 filled_data = []
                 date_format = '%Y-%m-%d'
                 
-                # Determine the date increment based on interval
                 if interval == 'day':
                     delta = timedelta(days=1)
                 elif interval == 'week':
                     delta = timedelta(weeks=1)
                 else:
-                    # For monthly, we need to handle month increments differently
-                    return data  # For simplicity, we'll skip filling for monthly
+                    return data 
                 
-                # Convert all dates to datetime objects
                 date_dict = {datetime.strptime(item['date'], date_format): item['count'] for item in data}
                 
-                # Get start and end dates
                 start_date = min(date_dict.keys())
                 end_date = max(date_dict.keys())
                 
-                # Fill in missing dates
                 current_date = start_date
                 while current_date <= end_date:
                     current_str = current_date.strftime(date_format)
                     if current_date in date_dict:
                         filled_data.append({'date': current_str, 'count': date_dict[current_date]})
                     else:
-                        # Use previous count if available
                         prev_count = filled_data[-1]['count'] if filled_data else 0
                         filled_data.append({'date': current_str, 'count': prev_count})
                     
@@ -257,7 +241,6 @@ class JobPostAnalyticsView(APIView):
     
     def get(self, request):
         try:
-            # Get time range from query params
             months = request.query_params.get('months', '12')
             
             try:
@@ -275,7 +258,6 @@ class JobPostAnalyticsView(APIView):
                 
             time_threshold = datetime.now() - timedelta(days=30 * months_int)
             
-            # Get job posts over time
             job_posts_over_time = JobPost.objects.filter(
                 created_at__gte=time_threshold,
                 is_deleted=False
@@ -285,28 +267,24 @@ class JobPostAnalyticsView(APIView):
                 count=Count('id')
             ).order_by('month')
             
-            # Get job posts by domain
             job_posts_by_domain = JobPost.objects.filter(
                 is_deleted=False
             ).values('domain').annotate(
                 count=Count('id')
             ).order_by('-count')
             
-            # Get job posts by job type (remote, hybrid, onsite)
             job_posts_by_type = JobPost.objects.filter(
                 is_deleted=False
             ).values('job_type').annotate(
                 count=Count('id')
             ).order_by('-count')
             
-            # Get job posts by employment type
             job_posts_by_employment = JobPost.objects.filter(
                 is_deleted=False
             ).values('employment_type').annotate(
                 count=Count('id')
             ).order_by('-count')
             
-            # Format data for the frontend
             posts_over_time_data = [{'date': entry['month'].strftime('%Y-%m-%d'), 'count': entry['count']} for entry in job_posts_over_time]
             
             return Response({
@@ -324,12 +302,10 @@ class JobPostAnalyticsView(APIView):
             )
 
 class AdminApplicationAnalyticsView(APIView):
-    """API view for job application analytics"""
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get(self, request):
         try:
-            # Get time range from query params
             months = request.query_params.get('months', '12')
             
             try:
@@ -347,7 +323,6 @@ class AdminApplicationAnalyticsView(APIView):
                 
             time_threshold = datetime.now() - timedelta(days=30 * months_int)
             
-            # Get applications over time
             applications_over_time = JobApplication.objects.filter(
                 applied_at__gte=time_threshold
             ).annotate(
@@ -356,14 +331,12 @@ class AdminApplicationAnalyticsView(APIView):
                 count=Count('id')
             ).order_by('month')
             
-            # Get applications by status
             applications_by_status = JobApplication.objects.values(
                 'status'
             ).annotate(
                 count=Count('id')
             ).order_by('-count')
             
-            # Get applications per job post (top 10 most applied to)
             top_job_posts = JobApplication.objects.values(
                 'jobpost'
             ).annotate(
@@ -371,7 +344,6 @@ class AdminApplicationAnalyticsView(APIView):
                 job_title=F('jobpost__title')
             ).order_by('-count')[:10]
             
-            # Get conversion rates (applied -> hired)
             total_applications = JobApplication.objects.count()
             hired_count = JobApplication.objects.filter(status='HIRED').count()
             rejection_count = JobApplication.objects.filter(status='REJECTED').count()
@@ -379,7 +351,6 @@ class AdminApplicationAnalyticsView(APIView):
             conversion_rate = (hired_count / total_applications * 100) if total_applications > 0 else 0
             rejection_rate = (rejection_count / total_applications * 100) if total_applications > 0 else 0
             
-            # Format data for the frontend
             applications_over_time_data = [{'date': entry['month'].strftime('%Y-%m-%d'), 'count': entry['count']} for entry in applications_over_time]
             
             return Response({
@@ -405,19 +376,15 @@ class AdminApplicationAnalyticsView(APIView):
 
 
 class IsJobProvider:
-    """
-    Custom permission to only allow job providers to access the view.
-    """
+
     def has_permission(self, request, view):
         return request.user.user_type == 'job_provider'
 
 class JobProviderStatsView(APIView):
-    """API view for job provider dashboard statistics"""
     permission_classes = [IsAuthenticated, IsJobProvider]
     
     def get(self, request):
         try:
-            # Get time period from query params (default: last 30 days)
             period = request.query_params.get('period', '30')
             
             try:
@@ -435,10 +402,8 @@ class JobProviderStatsView(APIView):
                 
             time_threshold = datetime.now() - timedelta(days=days)
             
-            # Get the job provider for the current user
             job_provider = JobProvider.objects.get(user=request.user)
             
-            # Overall stats
             total_job_posts = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
@@ -475,25 +440,28 @@ class JobProviderStatsView(APIView):
                 created_at__gte=time_threshold
             ).count()
             
-            # Growth percentages
-            # Calculate safely to avoid division by zero
+
             def calculate_growth(total, new):
-                if total - new == 0:
-                    return 100.0  # If all are new, growth is 100%
-                return round((new / (total - new)) * 100, 2) if total - new > 0 else 0
+                
+                previous = total - new
+                
+                if previous == 0:
+                    if new > 0:
+                        return 100.0 
+                    else:
+                        return 0.0  
+                return round((new / previous) * 100, 2)
                 
             job_post_growth = calculate_growth(total_job_posts, new_job_posts)
             application_growth = calculate_growth(total_applications, new_applications)
             interview_growth = calculate_growth(total_interviews, new_interviews)
             
-            # Application status distribution for this job provider
             application_status = JobApplication.objects.filter(
                 jobpost__job_provider=job_provider
             ).values('status').annotate(
                 count=Count('id')
             ).order_by('status')
             
-            # Job post status distribution
             job_post_status = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
@@ -509,13 +477,10 @@ class JobProviderStatsView(APIView):
                 count=Count('id')
             ).order_by('-count')
             
-            # Total views/impressions (placeholder - this would require tracking these metrics)
-            total_views = 0  # This would require a JobPostView model to track
+            total_views = 0
             
-            # Conversion rate (applications per job post)
             applications_per_job = round(total_applications / total_job_posts, 2) if total_job_posts > 0 else 0
             
-            # Return all stats
             return Response({
                 'total_stats': {
                     'job_posts': total_job_posts,
@@ -576,10 +541,8 @@ class JobPostActivityView(APIView):
                 
             time_threshold = datetime.now() - timedelta(days=30 * months_int)
             
-            # Get the job provider for the current user
             job_provider = JobProvider.objects.get(user=request.user)
             
-            # Select the appropriate truncation function based on interval
             if interval == 'week':
                 trunc_func = TruncWeek
             elif interval == 'day':
@@ -598,7 +561,6 @@ class JobPostActivityView(APIView):
                 count=Count('id')
             ).order_by('period')
             
-            # Get applications over time
             applications_over_time = JobApplication.objects.filter(
                 jobpost__job_provider=job_provider,
                 applied_at__gte=time_threshold
@@ -608,11 +570,9 @@ class JobPostActivityView(APIView):
                 count=Count('id')
             ).order_by('period')
             
-            # Format data for the frontend
             posts_over_time_data = [{'date': entry['period'].strftime('%Y-%m-%d'), 'count': entry['count']} for entry in job_posts_over_time]
             applications_over_time_data = [{'date': entry['period'].strftime('%Y-%m-%d'), 'count': entry['count']} for entry in applications_over_time]
             
-            # Job posts by type (remote, hybrid, onsite)
             job_posts_by_type = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
@@ -620,7 +580,6 @@ class JobPostActivityView(APIView):
                 count=Count('id')
             ).order_by('-count')
             
-            # Job posts by employment type
             job_posts_by_employment = JobPost.objects.filter(
                 job_provider=job_provider,
                 is_deleted=False
@@ -654,10 +613,8 @@ class ApplicationAnalyticsView(APIView):
     
     def get(self, request):
         try:
-            # Get the job provider for the current user
             job_provider = JobProvider.objects.get(user=request.user)
             
-            # Get top performing job posts (most applications)
             top_job_posts = JobApplication.objects.filter(
                 jobpost__job_provider=job_provider
             ).values(
@@ -701,7 +658,6 @@ class ApplicationAnalyticsView(APIView):
                 count=Count('id')
             ).order_by('-count')
             
-            # Get pending applications (those that need review)
             pending_applications = JobApplication.objects.filter(
                 jobpost__job_provider=job_provider,
                 status='APPLIED'
@@ -714,9 +670,8 @@ class ApplicationAnalyticsView(APIView):
                 status='SCHEDULED'
             ).count()
             
-            # Get average time to hire (placeholder - would need more data tracking)
-            # This would require tracking when status changes from APPLIED to HIRED
-            avg_time_to_hire = "N/A"  # Placeholder
+
+            avg_time_to_hire = "N/A" 
             
             return Response({
                 'top_job_posts': top_job_posts,
@@ -751,10 +706,8 @@ class UpcomingInterviewsView(APIView):
     
     def get(self, request):
         try:
-            # Get the job provider for the current user
             job_provider = JobProvider.objects.get(user=request.user)
             
-            # Get upcoming interviews
             upcoming_interviews = InterviewSchedule.objects.filter(
                 application__jobpost__job_provider=job_provider,
                 interview_date__gte=datetime.now().date(),
@@ -766,7 +719,6 @@ class UpcomingInterviewsView(APIView):
                 'application__jobpost'
             ).order_by('interview_date', 'interview_time')[:10]
             
-            # Format for frontend
             interview_data = []
             for interview in upcoming_interviews:
                 interview_data.append({
@@ -779,7 +731,6 @@ class UpcomingInterviewsView(APIView):
                     'meeting_id': interview.meeting_id,
                 })
             
-            # Get interview statistics
             total_interviews = InterviewSchedule.objects.filter(
                 application__jobpost__job_provider=job_provider
             ).count()

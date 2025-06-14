@@ -14,6 +14,8 @@ import logging
 from django.core.mail import send_mail
 from auth_app.models import JobSeeker
 from notification_app.utils import *
+from django.db.models import Q
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +31,12 @@ class ShortlistedApplicantsView(APIView):
                 job_provider=job_provider,
                 is_deleted=False
             )
+           
             applications = JobApplication.objects.filter(
                 jobpost=job_post,
-                status='SHORTLISTED'
+                status__in=['SHORTLISTED', 'HIRED']
             )
+
             serializer = JobApplicationDetailSerializer(applications, many=True)
             logger.info("Successfully returned %d shortlisted applications for job %s", len(serializer.data), pk)
             return Response(serializer.data)

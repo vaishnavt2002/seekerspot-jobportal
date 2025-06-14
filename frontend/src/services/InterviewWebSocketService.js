@@ -46,9 +46,7 @@ class InterviewWebSocketService {
         });
         
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = import.meta.env.VITE_WS_HOST || window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/interview/`;
-        
+        const wsUrl = `${protocol}//${import.meta.env.VITE_WS_HOST}/ws/interview/`;
         this.debug('WebSocket URL:', wsUrl);
         
         this.socket = new WebSocket(wsUrl);

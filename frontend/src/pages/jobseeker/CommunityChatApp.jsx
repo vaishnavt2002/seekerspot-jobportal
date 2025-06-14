@@ -4,9 +4,10 @@ import axiosInstance from '../../api/axiosInstance';
 import WebSocketService from '../../services/websocket';
 import { useSelector } from 'react-redux';
 import { debounce } from 'lodash';
-import Loading from '../../components/Loading'
+import Loading from '../../components/Loading';
+import dummyImage from '../../assets/dummy_profile.jpeg';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = 'https://api.vaishnavt.in';
 
 // Notification Component
 const Notification = ({ message, type = 'info', onClose }) => {
@@ -120,12 +121,12 @@ const CommunityListItem = ({ community, isSelected, isMember, isAdmin, onSelect,
       <div className="flex items-center space-x-3">
         <div className="relative">
           <img
-            src={`${BASE_URL}${community.cover_image}` || '/placeholder-community.jpg'}
+            src={community.cover_image_url||dummyImage} 
             alt={community.name}
             className="w-10 h-10 rounded-full object-cover"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = '/placeholder-community.jpg';
+              
             }}
           />
           {unreadCount > 0 && (
@@ -328,7 +329,7 @@ const ChatHeader = ({ community, wsStatus, selectedCommunityId, userMemberships,
     <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-wrap gap-2">
       <div className="flex items-center space-x-3">
         <img
-          src={`${BASE_URL}${community?.cover_image}` || '/placeholder-community.jpg'}
+          src={community?.cover_image_url||dummyImage}
           alt={community?.name}
           className="w-10 h-10 rounded-full object-cover"
           onError={(e) => {

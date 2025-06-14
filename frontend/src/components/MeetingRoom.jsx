@@ -902,13 +902,7 @@ const MeetingRoom = () => {
               <span className="text-xs mt-1">End Call</span>
             </button>
             
-            <button
-              onClick={restartPeerConnection}
-              className="flex flex-col items-center justify-center p-3 rounded-full bg-yellow-500 text-white hover:bg-yellow-600 hover:scale-110 transition-transform"
-            >
-              <span className="text-xl">🔄</span>
-              <span className="text-xs mt-1">Reconnect</span>
-            </button>
+           
           </div>
         </div>
         

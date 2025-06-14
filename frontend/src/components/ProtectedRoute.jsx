@@ -1,50 +1,16 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { useEffect, useState, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import Loading from './Loading';
-import { refreshTokenThunk } from '../store/slices/authSlice';
-import { getProfile } from '../api/authApi';
 
 const ProtectedRoute = ({ children, role }) => {
-  const dispatch = useDispatch();
-  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const authCheckAttempted = useRef(false);
+  const { isAuthenticated, user, loading, authChecked } = useSelector((state) => state.auth);
   const location = useLocation();
   
   // Check if this is a meeting route
   const isMeetingRoute = location.pathname.includes('/meet/');
 
-  useEffect(() => {
-    if (authCheckAttempted.current) return;
-    
-    const verifyAuth = async () => {
-      if (isAuthenticated) {
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      try {
-        await getProfile();
-      } catch (err) {
-        if (err.status === 401) {
-          try {
-            console.log("Attempting token refresh from protected route");
-            await dispatch(refreshTokenThunk()).unwrap();
-          } catch (refreshErr) {
-            console.error("Auth refresh failed on protected route:", refreshErr);
-          }
-        }
-      } finally {
-        authCheckAttempted.current = true;
-        setIsCheckingAuth(false);
-      }
-    };
-
-    verifyAuth();
-  }, [dispatch, isAuthenticated, user]);
-
-  if (loading || isCheckingAuth) {
+  // Show loading until auth check is complete
+  if (loading || !authChecked) {
     return <Loading />;
   }
 

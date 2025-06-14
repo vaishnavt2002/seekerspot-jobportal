@@ -52,7 +52,6 @@ class PopularJobsView(APIView):
     def get(self, request):
         """Get the top 6 jobs with most applications"""
         try:
-            # Get jobs with most applications
             popular_jobs = JobPost.objects.filter(
                 status='PUBLISHED', 
                 is_deleted=False,

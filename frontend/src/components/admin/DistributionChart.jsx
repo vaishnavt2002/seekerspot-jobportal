@@ -48,14 +48,11 @@ const DistributionChart = ({ data, nameKey, valueKey, colors }) => {
     return null;
   };
 
-  // Format the name for display
   const formatName = (name) => {
     if (!name) return '';
     
-    // Replace underscores with spaces
     name = name.replace(/_/g, ' ');
     
-    // Convert to title case (capitalize first letter of each word)
     return name.toLowerCase().split(' ').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');

@@ -1,4 +1,3 @@
-# interview_app/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -82,11 +81,9 @@ class InterviewConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-        # Get user info
         user_info = await self.get_user_info(user_id)
         logger.debug(f"User info for {user_id}: {user_info}")
 
-        # Notify the room that a user has joined
         logger.debug(f"Sending user_joined message to room {meeting_id}")
         await self.channel_layer.group_send(
             meeting_id,
@@ -135,11 +132,9 @@ class InterviewConsumer(AsyncWebsocketConsumer):
             logger.warning(f"User attempted to send signaling for room {meeting_id} without joining")
             return
 
-        # Forward the signaling message to the room
         message_type = data.get('type')
         logger.debug(f"Forwarding signaling message type '{message_type}' for meeting {meeting_id}")
         
-        # Add additional logging for specific signaling message types
         if message_type == 'offer':
             logger.debug(f"Forwarding OFFER from {data.get('userId')} to {data.get('targetUserId')}")
         elif message_type == 'answer':
@@ -187,11 +182,9 @@ class InterviewConsumer(AsyncWebsocketConsumer):
             user = User.objects.get(id=user_id)
             interview = InterviewSchedule.objects.get(meeting_id=meeting_id)
             
-            # Check if the meeting is active
             if interview.status not in ['SCHEDULED', 'RESCHEDULED']:
                 return False
             
-            # Check if user has access based on their role
             if user_type == 'job_provider':
                 try:
                     job_provider = JobProvider.objects.get(user=user)

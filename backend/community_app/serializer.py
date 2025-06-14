@@ -2,11 +2,17 @@
 from rest_framework import serializers
 from .models import Community, CommunityMember, CommunityMessage, UserReadStatus
 from auth_app.models import User
+from cloudinary.utils import cloudinary_url
 
 class CommunitySerializer(serializers.ModelSerializer):
+    cover_image_url = serializers.SerializerMethodField()
     class Meta:
         model = Community
-        fields = ['id', 'name', 'description', 'cover_image', 'category', 'created_at']
+        fields = ['id', 'name', 'description', 'cover_image','cover_image_url', 'category', 'created_at']
+    def get_cover_image_url(self, obj):
+        if obj.cover_image:
+            return obj.cover_image.url
+        return None
 
 class CommunityMemberSerializer(serializers.ModelSerializer):
     user = serializers.SlugRelatedField(slug_field='username', read_only=True)

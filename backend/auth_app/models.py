@@ -1,4 +1,3 @@
-# auth/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from cloudinary.models import CloudinaryField
@@ -25,7 +24,7 @@ class User(AbstractUser):
     
 class JobSeeker(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='job_seeker_profile')
-    resume = models.FileField(upload_to='resumes/', null=True, blank=True)
+    resume = models.URLField(max_length=500, null=True, blank=True)
     summary = models.TextField(null=True, blank=True)
     experience = models.PositiveIntegerField(default=0)
     current_salary = models.PositiveIntegerField(null=True, blank=True)
@@ -36,6 +35,22 @@ class JobSeeker(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Job Seeker"
+    
+    @property
+    def has_resume(self):
+        """Check if user has uploaded a resume"""
+        return bool(self.resume)
+    
+    @property
+    def resume_filename(self):
+        """Extract filename from resume URL"""
+        if self.resume:
+            try:
+                import os
+                return os.path.basename(self.resume).split('?')[0]
+            except:
+                return "resume.pdf"
+        return None
     
 class JobProvider(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='job_provider_profile')

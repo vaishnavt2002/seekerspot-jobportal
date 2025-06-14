@@ -3,6 +3,8 @@ import { signup } from '../../api/authApi';
 import { useNavigate } from 'react-router-dom';
 import VerifyEmail from './VerifyEmail';
 import Loading from '../Loading';
+import { GoogleLogin } from '@react-oauth/google';
+import axiosInstance from '../../api/axiosInstance';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -81,7 +83,8 @@ const Signup = () => {
                 newErrors.password = 'Password does not meet requirements';
             }
         }
-                if (formData.phone_number) {
+        
+        if (formData.phone_number) {
             if (!/^[4-9]\d{9}$/.test(formData.phone_number)) {
                 newErrors.phone_number = 'Phone number must be 10 digits and start with a digit between 4-9';
             }
@@ -168,6 +171,34 @@ const Signup = () => {
         setTimeout(() => navigate('/login'), 2000);
     };
 
+    // Google Authentication handlers
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
+        setError(null);
+        setSuccess(null);
+        
+        try {
+            const response = await axiosInstance.post('/auth/google/', {
+                token: credentialResponse.credential,
+                user_type: 'job_seeker'
+            });
+            
+            setSuccess('Google signup successful! Redirecting to home page...');
+            setTimeout(() => {
+                navigate('/');
+            }, 2000);
+        } catch (err) {
+            console.error('Google signup error:', err);
+            setError(err.message || 'Google signup failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google sign up was unsuccessful. Please try again.');
+    };
+
     return (
         <div className='flex justify-center min-h-screen items-center bg-gray-100'>
             {!showVerification ? (
@@ -177,6 +208,45 @@ const Signup = () => {
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4" role="alert">
                         <p>{error}</p>
+                    </div>
+                )}
+                
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User Type <span className="text-red-500">*</span></label>
+                    <select
+                        name="user_type"
+                        value={formData.user_type}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.user_type ? 'border-red-500' : 'border-gray-300'}`}
+                        required
+                    >
+                        <option value="">Select User Type</option>
+                        <option value="job_seeker">Job Seeker</option>
+                        <option value="job_provider">Job Provider</option>
+                    </select>
+                    {errors.user_type && <p className="text-red-500 text-xs mt-1">{errors.user_type}</p>}
+                </div>
+                
+                {/* Google Sign-up Button for Job Seekers Only */}
+                {formData.user_type === 'job_seeker' && (
+                    <div className="mt-4 mb-4">
+                        <p className="text-center text-sm text-gray-600 mb-2">Job Seekers can sign up with Google</p>
+                        <div className="flex justify-center">
+                            <GoogleLogin
+                                onSuccess={handleGoogleSuccess}
+                                onError={handleGoogleError}
+                                useOneTap
+                                theme="outline"
+                                text="signup_with"
+                                shape="rectangular"
+                                logo_alignment="center"
+                            />
+                        </div>
+                        <div className="flex items-center my-4">
+                            <hr className="flex-1 border-t border-gray-300" />
+                            <span className="px-3 text-gray-500 text-sm">OR</span>
+                            <hr className="flex-1 border-t border-gray-300" />
+                        </div>
                     </div>
                 )}
                 
@@ -236,21 +306,6 @@ const Signup = () => {
                             placeholder="Must be 10 digits starting with 4-9"
                         />
                         {errors.phone_number && <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">User Type <span className="text-red-500">*</span></label>
-                        <select
-                            name="user_type"
-                            value={formData.user_type}
-                            onChange={handleChange}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.user_type ? 'border-red-500' : 'border-gray-300'}`}
-                            required
-                        >
-                            <option value="">Select User Type</option>
-                            <option value="job_seeker">Job Seeker</option>
-                            <option value="job_provider">Job Provider</option>
-                        </select>
-                        {errors.user_type && <p className="text-red-500 text-xs mt-1">{errors.user_type}</p>}
                     </div>
                     {formData.user_type === 'job_provider' && (
                         <>
@@ -351,12 +406,12 @@ const Signup = () => {
                         Already have an account? Login
                     </button>
                     <button
-              className="text-blue-600 hover:underline w-full pt-2"
-              onClick={() => navigate('/')}
-              style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
-            >
-                Go home
-              </button>
+                        className="text-blue-600 hover:underline w-full pt-2"
+                        onClick={() => navigate('/')}
+                        style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer' }}
+                    >
+                        Go home
+                    </button>
                 </div>
             </div>
             ) : (

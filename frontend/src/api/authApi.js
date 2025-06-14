@@ -42,3 +42,6 @@ export const resetPassword = async (resetData) => {
 export const refreshToken = async () => {
     return axiosInstance.post('/auth/token/refresh/');
 };
+export const googleAuth = async (token) => {
+  return axiosInstance.post('/auth/google/', { token, user_type: 'job_seeker' });
+};

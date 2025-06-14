@@ -3,9 +3,10 @@ import { useSelector } from 'react-redux';
 import Loading from '../components/Loading';
 
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
+  const { isAuthenticated, loading, authChecked } = useSelector((state) => state.auth);
 
-  if (loading) {
+  // Wait for auth check to complete
+  if (loading || !authChecked) {
     return <Loading />;
   }
 

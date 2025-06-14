@@ -14,6 +14,10 @@ import random
 from django.middleware.csrf import get_token
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import AuthenticationFailed
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from django.conf import settings
+from django.db import transaction
 import logging
 
 
@@ -23,27 +27,23 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        # First, try to find the user by email
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Check if user is blocked
         if not user.is_active:
             return Response(
                 {'error': 'Your account is blocked. Please contact the admin.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Authenticate user only if active
         user = authenticate(request, email=email, password=password)
         if not user:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Check user type and verification
         if user.user_type == 'admin':
-            pass  # Add admin-specific logic if needed
+            pass  
         elif not user.is_verified:
             return Response(
                 {'error': 'Verification failed. Sign up again'},
@@ -276,16 +276,13 @@ class LogoutView(APIView):
         return response
     
 class UserView(APIView):
-    """
-    Get the basic info for the currently authenticated user
-    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
         user_data = UserSerializer(user).data
         
-        # Add profile-specific data
         if user.user_type == 'job_seeker':
             try:
                 profile = JobSeeker.objects.get(user=user)
@@ -308,3 +305,103 @@ class UserView(APIView):
                 pass
                 
         return Response(user_data)
+    
+class GoogleAuthView(APIView):
+    def post(self, request):
+        token = request.data.get('token')
+        user_type = request.data.get('user_type')
+        
+        if user_type != 'job_seeker':
+            return Response(
+                {'error': 'Google authentication is only available for job seekers'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token, 
+                requests.Request(), 
+                settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+            )
+            
+            email = idinfo.get('email')
+            if not email:
+                return Response(
+                    {'error': 'Email not provided by Google'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            if not idinfo.get('email_verified'):
+                return Response(
+                    {'error': 'Google email is not verified'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+            picture = idinfo.get('picture', None)
+            
+            with transaction.atomic():
+                try:
+                    user = User.objects.get(email=email)
+                    
+                    if user.user_type != 'job_seeker':
+                        return Response(
+                            {'error': 'This email is already registered as a different user type'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                        
+                except User.DoesNotExist:
+                    user = User.objects.create_user(
+                        email=email,
+                        username=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        user_type='job_seeker',
+                        is_verified=True 
+                    )
+                    
+                    JobSeeker.objects.create(
+                        user=user,
+                        expected_salary=0
+                    )
+                    
+                    if picture:
+                        pass
+            
+            login(request, user)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            response = Response({
+                'access': access_token,
+                'refresh': refresh_token,
+                'user': UserSerializer(user).data
+            })
+            
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=5 * 60
+            )
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=24 * 60 * 60
+            )
+            
+            return response
+            
+        except ValueError as e:
+            return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        except Exception as e:
+            # Other errors
+            return Response({'error': f'Authentication failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

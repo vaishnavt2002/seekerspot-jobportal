@@ -1,3 +1,4 @@
+from requests import get
 from rest_framework import serializers
 from auth_app.models import User, JobSeeker, JobProvider
 
@@ -48,27 +49,29 @@ class JobProviderAdminSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(source='user.phone_number')
     is_active = serializers.BooleanField(source='user.is_active')
     profile_picture = serializers.ImageField(source='user.profile_picture', read_only=True)
-
+    company_logo_url = serializers.SerializerMethodField()
     class Meta:
         model = JobProvider
         fields = [
             'id', 'email', 'first_name', 'last_name', 'phone_number',
-            'company_name', 'company_logo', 'industry', 'company_website',
+            'company_name', 'company_logo','company_logo_url', 'industry', 'company_website',
             'description', 'location', 'is_active', 'is_verified',
             'profile_picture', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'id']
+        read_only_fields = ['created_at', 'updated_at', 'id','company_logo_url']
+    def get_company_logo_url(self, obj):
+        if obj.company_logo:
+            return obj.company_logo.url
+        return None
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
         user = instance.user
 
-        # Update user fields
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
 
-        # Update job provider fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

@@ -392,7 +392,6 @@ class JobProviderVerifyView(APIView):
             job_provider = JobProvider.objects.get(pk=pk)
             user = job_provider.user
             
-            # Set verification status to true
             job_provider.is_verified = True
             job_provider.save()
             try:
@@ -406,7 +405,6 @@ class JobProviderVerifyView(APIView):
                 )
                 logger.info(f"Verification email sent to job provider {pk}")
             except Exception as e:
-                # Log the error but don't fail the verification process
                 logger.error(f"Failed to send verification email to job provider {pk}: {str(e)}")
             
             logger.info(f"Job provider {pk} verified by admin {request.user.id}")

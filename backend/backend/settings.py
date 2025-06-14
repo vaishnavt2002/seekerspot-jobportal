@@ -31,8 +31,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.10']
-
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'web', '192.168.1.10', '*']
 
 # Application definition
 
@@ -57,9 +56,18 @@ INSTALLED_APPS = [
     'notification_app',
     'user_management_app',
     'dashboard_app',
+    'social_django',
     ]
 # Channels settings
 ASGI_APPLICATION = 'backend.asgi.application'
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             'hosts': [(os.environ.get('REDIS_HOST', 'redis'), 6379)],  # Use 'redis' service name
+#         },
+#     },
+# }
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -68,7 +76,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
-
 # Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -106,8 +113,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173', 'http://localhost:3000',"http://192.168.1.10:5173"
+    'http://localhost:5173', 
+    'http://localhost:3000',
+    'http://192.168.1.10:5173',
+    'http://0.0.0.0:5173',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
 ]
+
 
 
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
@@ -146,9 +159,10 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
-
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ['email', 'profile']
 #media config
-# seekerspot/settings.py
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -188,7 +202,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+] if (BASE_DIR / 'static').exists() else []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -241,7 +259,7 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'INFO',  # Show all logs >= INFO
+            'level': 'INFO', 
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
@@ -258,14 +276,14 @@ LOGGING = {
             'propagate': False,
         },
         'django.db.backends': {
-            'handlers': ['console'],  # Use DEBUG here only if needed
+            'handlers': ['console'], 
             'level': 'INFO',
             'propagate': False,
         },
     },
     'root': {
         'handlers': ['file', 'console'],
-        'level': 'INFO',  # Ensures root logs go to console too
+        'level': 'INFO', 
     }
 }
 

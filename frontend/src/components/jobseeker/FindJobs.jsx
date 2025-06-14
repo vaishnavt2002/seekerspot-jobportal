@@ -589,7 +589,7 @@ const FindJobs = () => {
               >
                 <div className="flex items-center gap-4 mb-4">
                   <img
-                    src={`http://localhost:8000${job.job_provider.company_logo}`}
+                    src={job.job_provider.company_logo}
                     alt={`${job.job_provider.company_name} logo`}
                     className="h-10 w-10 object-contain rounded"
                   />

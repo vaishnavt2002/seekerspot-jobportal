@@ -201,7 +201,12 @@ const profileApi = {
     const response = await axiosInstance.get('/profile/resume/');
     return response;
   } catch (error) {
-    throw new Error(error.message || 'Failed to fetch resume.');
+    if (error.response) {
+     
+      throw error;
+    } else {
+      throw new Error('No resume uploaded yet.');
+    }
   }
 },
 

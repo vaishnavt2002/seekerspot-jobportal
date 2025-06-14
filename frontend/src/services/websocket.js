@@ -28,8 +28,7 @@ class WebSocketService {
         });
         
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = import.meta.env.VITE_WS_HOST || window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/community/`;
+        const wsUrl = `${protocol}//${import.meta.env.VITE_WS_HOST}/ws/community/`;
         
         console.log('WebSocket URL:', wsUrl);
         

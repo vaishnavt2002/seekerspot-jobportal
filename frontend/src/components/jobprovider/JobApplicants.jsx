@@ -2,8 +2,24 @@ import React, { useState, useEffect } from 'react';
 import jobApi from '../../api/jobApi';
 
 // Sub-component to display applicant details (reused from original)
+// Replace the ApplicantDetails component in your original file with this updated version
+
+// Replace your existing ApplicantDetails component with this:
+
 const ApplicantDetails = ({ applicant }) => {
   const baseURL=import.meta.env.VITE_BASE_URL
+  
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -36,6 +52,33 @@ const ApplicantDetails = ({ applicant }) => {
           </div>
         </div>
       </div>
+
+      {/* Questions and Answers Section */}
+      {applicant.question_answers && applicant.question_answers.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-lg">Application Questions & Answers</h3>
+          <div className="space-y-3 mt-2">
+            {applicant.question_answers.map((qa, index) => (
+              <div key={qa.question_id} className="border-l-4 border-blue-200 pl-4 py-2 bg-blue-50 rounded-r">
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                    {qa.question_type === 'YES_NO' ? 'Yes/No' : 'Descriptive'}
+                  </span>
+                </div>
+                <p className="font-medium text-gray-800 mb-2">
+                  <strong>Q{index + 1}:</strong> {qa.question_text}
+                </p>
+                <p className="text-gray-700 bg-white p-2 rounded border-l-2 border-gray-300">
+                  <strong>Answer:</strong> {qa.answer_text || 'No answer provided'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Answered on: {formatDate(qa.answered_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Education */}
       <div>
@@ -85,7 +128,7 @@ const ApplicantDetails = ({ applicant }) => {
       <div className="flex space-x-4 pt-2">
         {applicant.job_seeker.resume ? (
   <a
-    href={`${baseURL}${applicant.job_seeker.resume}`}
+    href={applicant.job_seeker.resume}
     target="_blank"
     rel="noopener noreferrer"
     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"

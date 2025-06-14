@@ -258,12 +258,14 @@ class JobApplicationDetailSerializer(serializers.ModelSerializer):
     work_experience = serializers.SerializerMethodField()
     skill_match = serializers.SerializerMethodField()
     interviews = serializers.SerializerMethodField()
+    question_answers = serializers.SerializerMethodField()  # Add this line
     
     class Meta:
         model = JobApplication
         fields = [
             'id', 'jobpost', 'job_seeker', 'status', 'applied_at', 'updated_at',
-            'skills', 'education', 'work_experience', 'skill_match','interviews'
+            'skills', 'education', 'work_experience', 'skill_match', 'interviews',
+            'question_answers'  # Add this line
         ]
     
     def get_skills(self, obj):
@@ -296,10 +298,36 @@ class JobApplicationDetailSerializer(serializers.ModelSerializer):
             "total_skills": total_job_skills,
             "match_percentage": round(match_percentage, 1)
         }
+        
     def get_interviews(self, obj):
         """Get all interviews for this application"""
         interviews = InterviewSchedule.objects.filter(application=obj.id)
         return InterviewScheduleSerializer(interviews, many=True).data
+    
+    def get_question_answers(self, obj):
+        """Get all question answers for this application"""
+        answers = JobQuestionAnswer.objects.filter(application=obj).select_related('question')
+        return [{
+            'question_id': answer.question.id,
+            'question_text': answer.question.question_text,
+            'question_type': answer.question.question_type,
+            'answer_text': answer.answer_text,
+            'answered_at': answer.created_at
+        } for answer in answers]
+        
+    def get_interviews(self, obj):
+        interviews = InterviewSchedule.objects.filter(application=obj.id)
+        return InterviewScheduleSerializer(interviews, many=True).data
+    
+    def get_question_answers(self, obj):
+        answers = JobQuestionAnswer.objects.filter(application=obj).select_related('question')
+        return [{
+            'question_id': answer.question.id,
+            'question_text': answer.question.question_text,
+            'question_type': answer.question.question_type,
+            'answer_text': answer.answer_text,
+            'answered_at': answer.created_at
+        } for answer in answers]
 class JobSeekerApplicationSerializer(serializers.ModelSerializer):
     job_title = serializers.CharField(source='jobpost.title')
     company_name = serializers.CharField(source='jobpost.job_provider.company_name')

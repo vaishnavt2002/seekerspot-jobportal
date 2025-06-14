@@ -25,8 +25,7 @@ class NotificationSocketService {
   initialize() {
     // Set WebSocket URL based on the current environment
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.host;
-    this.url = `${protocol}://${host}/ws/notifications/`;
+    this.url = `${protocol}://${import.meta.env.VITE_WS_HOST}/ws/notifications/`;
     
     console.log('WebSocket service initialized with URL:', this.url);
     return this;

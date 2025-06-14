@@ -197,7 +197,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
                 
-            # Verify user is a member or admin
             is_authorized = await self.is_member_or_admin(community_id)
             if not is_authorized:
                 await self.send(text_data=json.dumps({
@@ -205,7 +204,6 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
                 
-            # Update read status
             success = await self.update_read_status(community_id, message_id)
             
             if success:
@@ -254,10 +252,8 @@ class CommunityChatConsumer(AsyncWebsocketConsumer):
             return False
     async def handle_fetch_unread_counts(self):
         try:
-            # Get unread counts for all communities the user is a member of
             unread_counts = await self.get_unread_counts()
             
-            # Send unread counts to the client
             await self.send(text_data=json.dumps({
                 'type': 'unread_counts_update',
                 'unread_counts': unread_counts

@@ -4,6 +4,10 @@ from rest_framework import serializers
 from .models import *
 from auth_app.models import *
 from jobpost_app.models import SavedJob,JobPost
+import logging
+
+import os
+logger = logging.getLogger(__name__)
 
 class WorkExperienceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -194,24 +198,30 @@ class SavedJobSerializer(serializers.ModelSerializer):
         
 class ResumeSerializer(serializers.ModelSerializer):
     filename = serializers.SerializerMethodField()
-    url = serializers.SerializerMethodField()
+    url_download = serializers.SerializerMethodField()
     uploaded_at = serializers.SerializerMethodField()
 
     class Meta:
         model = JobSeeker
-        fields = ['resume', 'filename', 'url', 'uploaded_at']
-        read_only_fields = ['filename', 'url', 'uploaded_at']
+        fields = ['resume', 'filename', 'url_download', 'uploaded_at']
+        read_only_fields = ['filename', 'url_download', 'uploaded_at']
 
     def get_filename(self, obj):
+        """Extract filename from resume URL"""
         if obj.resume:
-            return obj.resume.name.split('/')[-1]
+            try:
+                # Extract filename from URL
+                filename = os.path.basename(obj.resume).split('?')[0]  # Remove query params
+                return filename if filename else "resume.pdf"
+            except Exception as e:
+                logger.warning(f"Error extracting filename: {e}")
+                return "resume.pdf"
         return None
 
-    def get_url(self, obj):
-        if obj.resume:
-            request = self.context.get('request')
-            return request.build_absolute_uri(obj.resume.url) if request else obj.resume.url
-        return None
+    def get_url_download(self, obj):
+        """Return the resume URL for download"""
+        return obj.resume if obj.resume else None
     
     def get_uploaded_at(self, obj):
-        return obj.updated_at
+        """Get the upload timestamp from model's updated_at"""
+        return obj.updated_at if obj.updated_at else obj.created_at
